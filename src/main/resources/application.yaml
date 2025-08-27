@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: wealthcheck
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+
+server:
+  servlet:
+    context-path: /api/v1
+
+jwt:
+  secret: ${JWT_SECRET_KEY} # keep this in env var in prod
+  expiration: 3600000   # 1 hour in ms
