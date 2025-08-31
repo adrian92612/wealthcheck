@@ -11,5 +11,19 @@ server:
     context-path: /api/v1
 
 jwt:
-  secret: ${JWT_SECRET_KEY} # keep this in env var in prod
-  expiration: 3600000   # 1 hour in ms
+  secret: ${JWT_SECRET_KEY}
+  expiration: 3600000
+  cookie:
+    name: "wc-token"
+    max-age: 3600
+    secure: false
+
+google:
+  oauth2:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
+    redirect-uri: http://localhost:8080/api/v1/auth/callback
+
+app:
+  frontend:
+    url: http://localhost:3000
