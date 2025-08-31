@@ -1,16 +1,16 @@
 package com.adrvil.wealthcheck.controller;
 
-
+import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
 import com.adrvil.wealthcheck.entity.AccountEntity;
+import com.adrvil.wealthcheck.common.exception.GoogleAuthException;
 import com.adrvil.wealthcheck.mapper.AccountMapper;
 import com.adrvil.wealthcheck.service.CookieService;
 import com.adrvil.wealthcheck.service.GoogleAuthService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,7 +38,7 @@ public class GoogleAuthController {
     @GetMapping("/callback")
     public void handleGoogleCallback(
             @RequestParam String code,
-            HttpServletResponse response) throws Exception {
+            HttpServletResponse response) throws IOException {
 
         try {
             String jwtToken = googleAuthService.processGoogleCallback(code);
@@ -48,36 +48,33 @@ public class GoogleAuthController {
             // Redirect to frontend success page
             response.sendRedirect(googleAuthService.getFrontendUrl() + "/dashboard");
 
-        } catch (Exception e) {
-            log.error("Error processing Google callback", e);
+        } catch (GoogleAuthException | IOException e) {
+            log.error("Google OAuth failed", e);
             response.sendRedirect(googleAuthService.getFrontendUrl() + "/login?error=auth_failed");
         }
     }
 
 
     @GetMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(HttpServletResponse response) {
+    public void logout(HttpServletResponse response) throws IOException {
         cookieService.clearJwtCookie(response);
-        return ResponseEntity.ok(Map.of("message", "Logout successful"));
+        response.sendRedirect(googleAuthService.getFrontendUrl() + "/login");
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, String>> getCurrentUser(Authentication authentication) {
+    public ApiResponseEntity<Map<String, String>> getCurrentUser(Authentication authentication) {
         log.info("Current user: {}", authentication.getPrincipal());
         if (authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
             AccountEntity account = accountMapper.findByEmail(authentication.getName());
             if (account == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("message", "Account not found"));
+                return ApiResponseEntity.error(HttpStatus.NOT_FOUND, "Account not found", null);
             }
-            return ResponseEntity.ok(Map.of(
+            return ApiResponseEntity.success(HttpStatus.OK,"Authenticated",Map.of(
                     "email", account.getEmail(),
-                    "name", account.getName(),
-                    "authenticated", "true"
+                    "name", account.getName()
             ));
         }
-        return ResponseEntity.status(401)
-                .body(Map.of("error", "Not authenticated"));
+        return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED,"Not Authenticated",null);
     }
 
 }

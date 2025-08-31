@@ -4,13 +4,14 @@ package com.adrvil.wealthcheck.service;
 import com.adrvil.wealthcheck.dto.GoogleUserDto;
 import com.adrvil.wealthcheck.dto.response.GoogleTokenResponse;
 import com.adrvil.wealthcheck.entity.AccountEntity;
+import com.adrvil.wealthcheck.common.exception.GoogleAuthException;
 import com.adrvil.wealthcheck.mapper.AccountMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -54,7 +55,7 @@ public class GoogleAuthService {
                 .toUriString();
     }
 
-    public String processGoogleCallback(String code) throws Exception {
+    public String processGoogleCallback(String code) throws GoogleAuthException {
         // Exchange code for access token
         String accessToken = exchangeCodeForToken(code);
 
@@ -73,7 +74,7 @@ public class GoogleAuthService {
         return jwtService.generateTokenWithClaims(account.getEmail(), claims);
     }
 
-    private String exchangeCodeForToken(String code) throws RuntimeException {
+    private String exchangeCodeForToken(String code) throws GoogleAuthException {
         String tokenUrl = "https://oauth2.googleapis.com/token";
 
         Map<String, String> tokenRequest = new HashMap<>();
@@ -83,24 +84,30 @@ public class GoogleAuthService {
         tokenRequest.put("grant_type", "authorization_code");
         tokenRequest.put("redirect_uri", googleRedirectUri);
 
-        GoogleTokenResponse response = restTemplate.postForObject(tokenUrl, tokenRequest, GoogleTokenResponse.class);
-
-        if (response != null && response.getAccessToken() != null) {
-            return response.getAccessToken();
+        try {
+            GoogleTokenResponse response = restTemplate.postForObject(tokenUrl, tokenRequest, GoogleTokenResponse.class);
+            if (response != null && response.getAccessToken() != null) {
+                return response.getAccessToken();
+            }
+            throw new GoogleAuthException("Failed to get access token from Google");
+        } catch (RestClientException e) {
+            throw new GoogleAuthException("Error calling Google token endpoint", e);
         }
-
-        throw new RuntimeException("Failed to get access token from Google");
     }
 
-    private GoogleUserDto getUserInfoFromGoogle(String accessToken) {
+    private GoogleUserDto getUserInfoFromGoogle(String accessToken) throws GoogleAuthException {
         String userInfoUrl = "https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + accessToken;
 
-        GoogleUserDto googleUser = restTemplate.getForObject(userInfoUrl, GoogleUserDto.class);
-        log.info("Google User: {}", googleUser);
+        try {
+            GoogleUserDto googleUser = restTemplate.getForObject(userInfoUrl, GoogleUserDto.class);
+            log.info("Google User: {}", googleUser);
 
-        if (googleUser != null) {
-            return googleUser;
+            if (googleUser != null) {
+                return googleUser;
+            }
+            throw new GoogleAuthException("Failed to get user info from Google");
+        } catch (RestClientException e) {
+            throw new GoogleAuthException("Error calling Google userinfo endpoint", e);
         }
-        throw new RuntimeException("Failed to get user info from Google");
     }
 }
