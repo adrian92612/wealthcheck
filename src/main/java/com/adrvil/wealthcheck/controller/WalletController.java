@@ -1,6 +1,7 @@
 package com.adrvil.wealthcheck.controller;
 
 import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
+import com.adrvil.wealthcheck.common.exception.WalletCreationException;
 import com.adrvil.wealthcheck.dto.request.WalletReq;
 import com.adrvil.wealthcheck.dto.response.WalletRes;
 import com.adrvil.wealthcheck.service.WalletService;
@@ -55,13 +56,11 @@ public class WalletController {
     ) {
         try {
             WalletRes wallet = walletService.createWallet(walletReq);
-            if (wallet == null) {
-                return ApiResponseEntity.error(HttpStatus.BAD_REQUEST,"",null);
-            }
-            return ApiResponseEntity.success(HttpStatus.CREATED,"Wallet created", wallet);
+            return ApiResponseEntity.success(HttpStatus.CREATED, "Wallet created", wallet);
         } catch (NotFoundException e) {
             return ApiResponseEntity.error(HttpStatus.NOT_FOUND, e.getMessage(), null);
+        } catch (WalletCreationException e) {
+            return ApiResponseEntity.error(HttpStatus.BAD_REQUEST, e.getMessage(), null);
         }
-
     }
 }

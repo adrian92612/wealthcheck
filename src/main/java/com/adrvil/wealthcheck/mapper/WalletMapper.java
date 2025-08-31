@@ -24,5 +24,5 @@ public interface WalletMapper {
         SET name = #{req.name}, balance = #{req.balance}, updated_at = NOW()
         WHERE id = #{id} AND user_id = #{userId}
 """)
-    int updateWallet(@Param("id") Long id, @Param("userId") Long userId, @Param("req")WalletReq req);
+    int updateWallet(Long id, Long userId, WalletReq req);
 }
