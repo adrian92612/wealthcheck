@@ -14,4 +14,10 @@ public interface AccountMapper {
 
     @Select("SELECT * FROM account WHERE email = #{email}")
     AccountEntity findByEmail(String email);
+
+    @Select("SELECT * FROM account WHERE id = #{userId}")
+    AccountEntity findByUserId(Long userId);
+
+    @Select("SELECT id FROM account WHERE email = #{email}")
+    Long getUserIdByEmail(String email);
 }

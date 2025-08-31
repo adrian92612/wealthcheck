@@ -27,3 +27,7 @@ google:
 app:
   frontend:
     url: http://localhost:3000
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true

@@ -1,0 +1,29 @@
+package com.adrvil.wealthcheck.converter;
+
+import com.adrvil.wealthcheck.dto.request.WalletReq;
+import com.adrvil.wealthcheck.dto.response.WalletRes;
+import com.adrvil.wealthcheck.entity.WalletEntity;
+
+import java.time.Instant;
+
+public class WalletDtoMapper {
+    public static WalletEntity toEntity(WalletReq walletReq) {
+        return WalletEntity.builder()
+                .userId(walletReq.userId())
+                .name(walletReq.name())
+                .balance(walletReq.balance())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
+    public static WalletRes toDto(WalletEntity walletEntity) {
+        return new WalletRes(
+                walletEntity.getId(),
+                walletEntity.getName(),
+                walletEntity.getBalance(),
+                walletEntity.getCreatedAt(),
+                walletEntity.getUpdatedAt()
+        );
+    }
+}
