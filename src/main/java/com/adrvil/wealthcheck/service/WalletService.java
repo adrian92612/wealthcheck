@@ -39,18 +39,12 @@ public class WalletService {
     }
 
     public WalletRes getWalletById(Long id) throws NotFoundException {
-        Long userId = accountService.getCurrentAccountId();
-        if (userId == null) {
-            throw new NotFoundException("Account not found");
-        }
+        Long userId = accountService.getCurrentAccountIdOrThrow();
         return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId));
     }
 
     public List<WalletRes> getAllWallets() throws NotFoundException {
-        Long userId = accountService.getCurrentAccountId();
-        if (userId == null) {
-            throw new NotFoundException("Account not found");
-        }
+        Long userId = accountService.getCurrentAccountIdOrThrow();
 
         List<WalletEntity> walletEntityList = walletMapper.findByUserId(userId);
         log.debug("WALLET LIST: {}", walletEntityList);
@@ -61,10 +55,7 @@ public class WalletService {
     }
 
     public WalletRes updateWallet(Long id, WalletReq walletDtoReq) throws NotFoundException {
-        Long userId = accountService.getCurrentAccountId();
-        if (userId == null) {
-            throw new NotFoundException("Account not found");
-        }
+        Long userId = accountService.getCurrentAccountIdOrThrow();
         int i = walletMapper.updateWallet(id,userId,walletDtoReq);
         if (i == 1) {
             return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId));
