@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: wealthcheck
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+server:
+  servlet:
+    context-path: /api/v1
+
+jwt:
+  secret: test-secret
+  expiration: 3600000
+  cookie:
+    name: "wc-token"
+    max-age: 3600
+    secure: false
+
+google:
+  oauth2:
+    client-id: test-client
+    client-secret: test-secret
+    redirect-uri: http://localhost:8080/api/v1/auth/callback
+
+app:
+  frontend:
+    url: http://localhost:3000
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
