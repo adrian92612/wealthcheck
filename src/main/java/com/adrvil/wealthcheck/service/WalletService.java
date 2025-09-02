@@ -60,6 +60,6 @@ public class WalletService {
         if (i == 1) {
             return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId));
         }
-        throw new NotFoundException("Wallet not found or not owned by user");
+        throw new NotFoundException("Unable to update wallet");
     }
 }
