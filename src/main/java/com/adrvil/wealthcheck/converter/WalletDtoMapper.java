@@ -7,9 +7,9 @@ import com.adrvil.wealthcheck.entity.WalletEntity;
 import java.time.Instant;
 
 public class WalletDtoMapper {
-    public static WalletEntity toEntity(WalletReq walletReq) {
+    public static WalletEntity toEntity(Long userId, WalletReq walletReq) {
         return WalletEntity.builder()
-                .userId(walletReq.userId())
+                .userId(userId)
                 .name(walletReq.name())
                 .balance(walletReq.balance())
                 .createdAt(Instant.now())

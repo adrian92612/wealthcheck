@@ -6,7 +6,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 public record WalletReq(
-        long userId,
+//        long userId,
         @NotNull String name,
         @PositiveOrZero BigDecimal balance
 ) {
