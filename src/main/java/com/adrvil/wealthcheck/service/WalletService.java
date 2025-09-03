@@ -4,7 +4,6 @@ import com.adrvil.wealthcheck.common.exception.WalletCreationException;
 import com.adrvil.wealthcheck.converter.WalletDtoMapper;
 import com.adrvil.wealthcheck.dto.request.WalletReq;
 import com.adrvil.wealthcheck.dto.response.WalletRes;
-import com.adrvil.wealthcheck.entity.AccountEntity;
 import com.adrvil.wealthcheck.entity.WalletEntity;
 import com.adrvil.wealthcheck.mapper.WalletMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +24,8 @@ public class WalletService {
     private final WalletMapper walletMapper;
 
     public WalletRes createWallet(WalletReq walletDtoReq) throws NotFoundException {
-        AccountEntity account = accountService.getAccountByUserId(walletDtoReq.userId());
-        if (account == null) {
-            throw new NotFoundException("Account not found");
-        }
-        WalletEntity wallet = WalletDtoMapper.toEntity(walletDtoReq);
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        WalletEntity wallet = WalletDtoMapper.toEntity(userId, walletDtoReq);
         try {
             walletMapper.insert(wallet);
         } catch (PersistenceException | DataAccessException e) {
@@ -40,7 +36,9 @@ public class WalletService {
 
     public WalletRes getWalletById(Long id) throws NotFoundException {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId));
+        WalletEntity wallet = walletMapper.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new NotFoundException("Wallet not found"));
+        return WalletDtoMapper.toDto(wallet);
     }
 
     public List<WalletRes> getAllWallets() throws NotFoundException {
@@ -56,9 +54,11 @@ public class WalletService {
 
     public WalletRes updateWallet(Long id, WalletReq walletDtoReq) throws NotFoundException {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        int i = walletMapper.updateWallet(id,userId,walletDtoReq);
+        int i = walletMapper.updateWallet(id, userId, walletDtoReq);
         if (i == 1) {
-            return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId));
+            WalletEntity wallet = walletMapper.findByIdAndUserId(id, userId)
+                    .orElseThrow(() -> new NotFoundException("Wallet not found"));
+            return WalletDtoMapper.toDto(wallet);
         }
         throw new NotFoundException("Unable to update wallet");
     }

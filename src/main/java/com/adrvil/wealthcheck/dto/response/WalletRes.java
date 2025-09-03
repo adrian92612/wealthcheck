@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record WalletRes(
-        long id,
+        Long id,
         String name,
         BigDecimal balance,
         Instant createAt,
