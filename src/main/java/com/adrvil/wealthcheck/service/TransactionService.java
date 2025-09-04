@@ -1,19 +1,18 @@
 package com.adrvil.wealthcheck.service;
 
-import com.adrvil.wealthcheck.common.exception.TransactionCreationException;
+import com.adrvil.wealthcheck.common.exception.*;
 import com.adrvil.wealthcheck.converter.TransactionDtoMapper;
 import com.adrvil.wealthcheck.dto.request.TransactionReq;
 import com.adrvil.wealthcheck.dto.response.TransactionRes;
+import com.adrvil.wealthcheck.entity.CategoryEntity;
 import com.adrvil.wealthcheck.entity.TransactionEntity;
 import com.adrvil.wealthcheck.entity.WalletEntity;
 import com.adrvil.wealthcheck.enums.TransactionType;
+import com.adrvil.wealthcheck.mapper.CategoryMapper;
 import com.adrvil.wealthcheck.mapper.TransactionMapper;
 import com.adrvil.wealthcheck.mapper.WalletMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.exceptions.PersistenceException;
-import org.apache.ibatis.javassist.NotFoundException;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,47 +26,41 @@ public class TransactionService {
     private final AccountService accountService;
     private final TransactionMapper transactionMapper;
     private final WalletMapper walletMapper;
+    private final CategoryMapper categoryMapper;
 
     @Transactional
-    public TransactionRes createTransaction(TransactionReq req) throws NotFoundException {
-        validateTransactionReq(req);
+    public TransactionRes createTransaction(TransactionReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        validateTransactionReq(req);
+        validateCategoryType(userId, req.categoryId(), req.type());
+
         TransactionEntity transactionEntity = TransactionDtoMapper.toEntity(userId, req);
 
-        WalletEntity fromWallet = req.fromWalletId() != null
-                ? walletMapper.findByIdAndUserId(req.fromWalletId(), userId)
-                .orElseThrow(() -> new TransactionCreationException("Wallet not found"))
-                : null;
-        WalletEntity toWallet = req.toWalletId() != null
-                ? walletMapper.findByIdAndUserId(req.toWalletId(), userId)
-                .orElseThrow(() -> new TransactionCreationException("Wallet not found"))
-                : null;
+
+        WalletEntity fromWallet = fetchWallet(req.fromWalletId(), userId);
+        WalletEntity toWallet = fetchWallet(req.toWalletId(), userId);
 
         processBalanceChange(userId, req.type(), fromWallet, toWallet, req.amount());
 
-        try {
-            transactionMapper.insert(transactionEntity);
-        } catch (PersistenceException | DataAccessException e) {
-            throw new TransactionCreationException("Unable to create transaction", e);
-        }
-
+        transactionMapper.insert(transactionEntity);
         return transactionMapper.findResByIdAndUserId(transactionEntity.getId(), userId)
-                .orElseThrow(() -> new TransactionCreationException("Transaction not found"));
+                .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
 
     @Transactional
-    public TransactionRes updateTransaction(Long txId, TransactionReq req) throws NotFoundException {
-        validateTransactionReq(req);
+    public TransactionRes updateTransaction(Long id, TransactionReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        validateTransactionReq(req);
+        validateCategoryType(userId, req.categoryId(), req.type());
 
-        TransactionEntity existing = transactionMapper.findByIdAndUserId(txId, userId)
-                .orElseThrow(() -> new TransactionCreationException("Transaction not found"));
+        TransactionEntity existing = transactionMapper.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFound("Transaction"));
 
-        WalletEntity oldFrom = fetchWallet(existing.getFromWalletId(), userId, "old fromWallet");
-        WalletEntity oldTo = fetchWallet(existing.getToWalletId(), userId, "old toWallet");
+        WalletEntity oldFrom = fetchWallet(existing.getFromWalletId(), userId);
+        WalletEntity oldTo = fetchWallet(existing.getToWalletId(), userId);
 
-        WalletEntity newFrom = fetchWallet(req.fromWalletId(), userId, "new fromWallet");
-        WalletEntity newTo = fetchWallet(req.toWalletId(), userId, "new toWallet");
+        WalletEntity newFrom = fetchWallet(req.fromWalletId(), userId);
+        WalletEntity newTo = fetchWallet(req.toWalletId(), userId);
 
         processBalanceRevert(userId, existing.getType(), oldFrom, oldTo, existing.getAmount());
 
@@ -81,41 +74,37 @@ public class TransactionService {
         existing.setAmount(req.amount());
         existing.setType(req.type());
 
-        try {
-            int updated = transactionMapper.update(existing);
-            if (updated == 0) throw new TransactionCreationException("Unable to update transaction");
-        } catch (PersistenceException | DataAccessException e) {
-            throw new TransactionCreationException("Unable to update transaction", e);
-        }
+        int updated = transactionMapper.update(existing);
+        if (updated == 0) throw new ResourceNotFound("Transaction");
 
         return transactionMapper.findResByIdAndUserId(existing.getId(), userId)
-                .orElseThrow(() -> new TransactionCreationException("Transaction not found"));
+                .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
 
-    public TransactionRes getTransaction(Long id) throws NotFoundException {
+    public TransactionRes getTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         return transactionMapper.findResByIdAndUserId(id, userId)
-                .orElseThrow(() -> new TransactionCreationException("Transaction not found"));
+                .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
 
-    public List<TransactionRes> getAllTransactions() throws NotFoundException {
+    public List<TransactionRes> getAllTransactions() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         return transactionMapper.findAllResByUserId(userId);
     }
 
     @Transactional
-    public TransactionRes deleteTransaction(Long id) throws NotFoundException {
+    public TransactionRes deleteTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         TransactionRes existingRes = transactionMapper.findResByIdAndUserId(id, userId)
-                .orElseThrow(() -> new TransactionCreationException("Transaction not found"));
+                .orElseThrow(() -> new ResourceNotFound("Transaction"));
 
-        WalletEntity oldFrom = fetchWallet(existingRes.fromWalletId(), userId, "old fromWallet");
-        WalletEntity oldTo = fetchWallet(existingRes.toWalletId(), userId, "old toWallet");
+        WalletEntity oldFrom = fetchWallet(existingRes.fromWalletId(), userId);
+        WalletEntity oldTo = fetchWallet(existingRes.toWalletId(), userId);
 
         processBalanceRevert(userId, existingRes.type(), oldFrom, oldTo, existingRes.amount());
 
         int deleted = transactionMapper.softDelete(userId, id);
-        if (deleted == 0) throw new TransactionCreationException("Unable to delete transaction");
+        if (deleted == 0) throw new ResourceNotFound("Transaction");
 
         return existingRes;
     }
@@ -123,10 +112,10 @@ public class TransactionService {
 
     // --- helper methods ---
 
-    private WalletEntity fetchWallet(Long walletId, Long userId, String name) {
-        if (walletId == null) return null;
+    private WalletEntity fetchWallet(Long walletId, Long userId) {
+        if (walletId == null || userId == null) return null;
         return walletMapper.findByIdAndUserId(walletId, userId)
-                .orElseThrow(() -> new TransactionCreationException(name + " not found"));
+                .orElseThrow(() -> new ResourceNotFound("Wallet"));
     }
 
     private void processBalanceChange(Long userId, TransactionType type, WalletEntity fromWallet,
@@ -138,7 +127,7 @@ public class TransactionService {
                 decreaseBalance(userId, fromWallet, amount);
                 increaseBalance(userId, toWallet, amount);
             }
-            default -> throw new TransactionCreationException("Unsupported transaction type");
+            default -> throw new UnsupportedTransactionTypeException();
         }
     }
 
@@ -151,40 +140,52 @@ public class TransactionService {
                 increaseBalance(userId, oldFrom, amount);
                 decreaseBalance(userId, oldTo, amount);
             }
-            default -> throw new TransactionCreationException("Unsupported transaction type");
+            default -> throw new UnsupportedTransactionTypeException();
         }
     }
 
     private void decreaseBalance(Long userId, WalletEntity wallet, BigDecimal amount) {
-        if (wallet == null) throw new TransactionCreationException("Wallet required for expense/transfer");
+        if (wallet == null || userId == null) throw new IllegalArgumentException("Wallet and userId required for expense/transfer");
         int updated = walletMapper.decreaseBalance(userId, wallet.getId(), amount);
-        if (updated == 0) throw new TransactionCreationException("Insufficient balance (concurrent-safe)");
+        if (updated == 0) throw new InsufficientBalanceException("Insufficient balance (concurrent-safe)");
     }
 
     private void increaseBalance(Long userId, WalletEntity wallet, BigDecimal amount) {
-        if (wallet == null) throw new TransactionCreationException("Wallet required for income/transfer");
+        if (wallet == null) throw new IllegalArgumentException("Wallet and userId required for income/transfer");
         int updated = walletMapper.increaseBalance(userId, wallet.getId(), amount);
-        if (updated == 0) throw new TransactionCreationException("Failed to credit wallet");
+        if (updated == 0) throw new TransactionProcessingException("Failed to credit wallet");
     }
 
     private void validateTransactionReq(TransactionReq req) {
         switch (req.type()) {
             case EXPENSE -> {
-                if (req.fromWalletId() == null) throw new TransactionCreationException("Expense requires a fromWalletId");
-                if (req.toWalletId() != null) throw new TransactionCreationException("Expense cannot have a toWalletId");
-                if (req.categoryId() == null) throw new TransactionCreationException("Expense requires a categoryId");
+                if (req.fromWalletId() == null) throw new InvalidTransactionRequestException("Expense requires a fromWalletId");
+                if (req.toWalletId() != null) throw new InvalidTransactionRequestException("Expense cannot have a toWalletId");
+                if (req.categoryId() == null) throw new InvalidTransactionRequestException("Expense requires a categoryId");
             }
             case INCOME -> {
-                if (req.toWalletId() == null) throw new TransactionCreationException("Income requires a toWalletId");
-                if (req.fromWalletId() != null) throw new TransactionCreationException("Income cannot have a fromWalletId");
-                if (req.categoryId() == null) throw new TransactionCreationException("Income requires a categoryId");
+                if (req.toWalletId() == null) throw new InvalidTransactionRequestException("Income requires a toWalletId");
+                if (req.fromWalletId() != null) throw new InvalidTransactionRequestException("Income cannot have a fromWalletId");
+                if (req.categoryId() == null) throw new InvalidTransactionRequestException("Income requires a categoryId");
             }
             case TRANSFER -> {
                 if (req.fromWalletId() == null || req.toWalletId() == null)
-                    throw new TransactionCreationException("Transfer requires both fromWalletId and toWalletId");
-                if (req.categoryId() != null) throw new TransactionCreationException("Transfer cannot have a categoryId");
+                    throw new InvalidTransactionRequestException("Transfer requires both fromWalletId and toWalletId");
+                if (req.categoryId() != null) throw new InvalidTransactionRequestException("Transfer cannot have a categoryId");
             }
-            default -> throw new TransactionCreationException("Unsupported transaction type");
+            default -> throw new UnsupportedTransactionTypeException();
+        }
+    }
+
+    private void validateCategoryType(Long userId, Long categoryId, TransactionType transactionType) {
+        if (categoryId == null || userId == null) return;
+        CategoryEntity category = categoryMapper.getCategoryByIdAndUserId(categoryId, userId)
+                .orElseThrow(() -> new ResourceNotFound("Category"));
+
+        if (!category.getType().name().equals(transactionType.name())) {
+            throw new InvalidTransactionRequestException(
+                    "Category type " + category.getType() + " does not match transaction type " + transactionType
+            );
         }
     }
 }

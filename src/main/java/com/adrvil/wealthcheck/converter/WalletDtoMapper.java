@@ -12,6 +12,7 @@ public class WalletDtoMapper {
                 .userId(userId)
                 .name(walletReq.name())
                 .balance(walletReq.balance())
+                .softDeleted(false)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();

@@ -6,8 +6,10 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 public record WalletReq(
-//        long userId,
-        @NotNull String name,
-        @PositiveOrZero BigDecimal balance
+        @NotNull(message = "Name is required")
+        String name,
+
+        @PositiveOrZero(message = "Balance cannot be negative")
+        BigDecimal balance
 ) {
 }

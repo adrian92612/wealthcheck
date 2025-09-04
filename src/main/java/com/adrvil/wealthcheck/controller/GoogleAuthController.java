@@ -44,8 +44,6 @@ public class GoogleAuthController {
             String jwtToken = googleAuthService.processGoogleCallback(code);
             cookieService.setJwtCookie(response, jwtToken);
 
-
-            // Redirect to frontend success page
             response.sendRedirect(googleAuthService.getFrontendUrl() + "/dashboard");
 
         } catch (GoogleAuthException | IOException e) {
@@ -69,12 +67,12 @@ public class GoogleAuthController {
             if (account == null) {
                 return ApiResponseEntity.error(HttpStatus.NOT_FOUND, "Account not found", null);
             }
-            return ApiResponseEntity.success(HttpStatus.OK,"Authenticated",Map.of(
+            return ApiResponseEntity.success(HttpStatus.OK, "Authenticated", Map.of(
                     "email", account.getEmail(),
                     "name", account.getName()
             ));
         }
-        return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED,"Not Authenticated",null);
+        return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED, "Not Authenticated", null);
     }
 
 }

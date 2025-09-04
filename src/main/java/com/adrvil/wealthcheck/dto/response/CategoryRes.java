@@ -10,7 +10,6 @@ public record CategoryRes(
         String description,
         CategoryType type,
         String icon,
-        boolean isActive,
         Instant createAt,
         Instant updatedAt
 ) {

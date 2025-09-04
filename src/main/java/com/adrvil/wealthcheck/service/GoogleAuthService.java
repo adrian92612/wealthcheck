@@ -91,7 +91,7 @@ public class GoogleAuthService {
             }
             throw new GoogleAuthException("Failed to get access token from Google");
         } catch (RestClientException e) {
-            throw new GoogleAuthException("Error calling Google token endpoint", e);
+            throw new GoogleAuthException("Error calling Google token endpoint");
         }
     }
 
@@ -107,7 +107,7 @@ public class GoogleAuthService {
             }
             throw new GoogleAuthException("Failed to get user info from Google");
         } catch (RestClientException e) {
-            throw new GoogleAuthException("Error calling Google userinfo endpoint", e);
+            throw new GoogleAuthException("Error calling Google userinfo endpoint");
         }
     }
 }
