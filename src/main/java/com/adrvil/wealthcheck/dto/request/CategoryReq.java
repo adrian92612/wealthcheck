@@ -4,9 +4,15 @@ import com.adrvil.wealthcheck.enums.CategoryType;
 import jakarta.validation.constraints.NotNull;
 
 public record CategoryReq(
-        @NotNull String name,
+        @NotNull(message = "Name is required")
+        String name,
+
         String description,
-        @NotNull CategoryType type,
-        @NotNull String icon
+
+        @NotNull(message = "Type is required")
+        CategoryType type,
+
+        @NotNull(message = "Icon is required")
+        String icon
 ) {
 }

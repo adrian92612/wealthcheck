@@ -27,30 +27,39 @@ public interface WalletMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(WalletEntity wallet);
 
-    @Select("SELECT * FROM wallet WHERE user_id = #{userId}")
+    @Select("""
+            SELECT * FROM wallet
+            WHERE user_id = #{userId} AND soft_deleted = FALSE
+            """)
     List<WalletEntity> findByUserId(Long userId);
 
-    @Select("SELECT * FROM wallet WHERE id = #{id} AND user_id = #{userId}")
+    @Select("SELECT * FROM wallet WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE")
     Optional<WalletEntity> findByIdAndUserId(Long id, Long userId);
 
     @Update("""
                 UPDATE wallet
                 SET name = #{req.name}, balance = #{req.balance}, updated_at = NOW()
-                WHERE id = #{id} AND user_id = #{userId}
+                WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int updateWallet(Long id, Long userId, WalletReq req);
 
     @Update("""
                 UPDATE wallet SET balance = balance - #{amount}, updated_at = NOW()
-                WHERE id = #{walletId} AND user_id = #{userId} AND balance >= #{amount}
+                WHERE id = #{walletId} AND user_id = #{userId} AND balance >= #{amount} AND soft_deleted = FALSE
             """)
     int decreaseBalance(Long userId, Long walletId, BigDecimal amount);
 
     @Update("""
                 UPDATE wallet SET balance = balance + #{amount}, updated_at = NOW()
-                WHERE id = #{walletId} AND user_id = #{userId}
+                WHERE id = #{walletId} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int increaseBalance(Long userId, Long walletId, BigDecimal amount);
 
+    @Update("""
+            UPDATE wallet
+            SET soft_deleted = TRUE
+            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+            """)
+    int softDelete(Long id, Long userId);
 
 }

@@ -12,11 +12,11 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class CategoryEntity extends BaseEntity{
-    Long userId;
-    String name;
-    String description;
-    CategoryType type;
-    String icon;
-    boolean isActive;
+public class CategoryEntity extends BaseEntity {
+    private Long userId;
+    private String name;
+    private String description;
+    private CategoryType type;
+    private String icon;
+    private boolean softDeleted;
 }

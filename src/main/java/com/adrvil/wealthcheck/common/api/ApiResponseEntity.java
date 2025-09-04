@@ -9,7 +9,6 @@ public class ApiResponseEntity<T> extends ResponseEntity<ApiResponse<T>> {
         super(body, status);
     }
 
-    // --- Success with data ---
     public static <T> ApiResponseEntity<T> success(HttpStatus status, String message, T data) {
         return new ApiResponseEntity<>(
                 ApiResponse.success(status, message, data),
@@ -17,15 +16,13 @@ public class ApiResponseEntity<T> extends ResponseEntity<ApiResponse<T>> {
         );
     }
 
-    // --- Success without data ---
-    public static ApiResponseEntity<Void> success(HttpStatus status, String message) {
-        return new ApiResponseEntity<>(
-                ApiResponse.success(status, message, null),
-                status
-        );
-    }
+//    public static ApiResponseEntity<Void> success(HttpStatus status, String message) {
+//        return new ApiResponseEntity<>(
+//                ApiResponse.success(status, message, null),
+//                status
+//        );
+//    }
 
-    // --- Error with data ---
     public static <T> ApiResponseEntity<T> error(HttpStatus status, String message, T data) {
         return new ApiResponseEntity<>(
                 ApiResponse.error(status, message, data),
@@ -33,7 +30,6 @@ public class ApiResponseEntity<T> extends ResponseEntity<ApiResponse<T>> {
         );
     }
 
-    // --- Error without data ---
     public static ApiResponseEntity<Void> error(HttpStatus status, String message) {
         return new ApiResponseEntity<>(
                 ApiResponse.error(status, message, null),

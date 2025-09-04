@@ -1,11 +1,12 @@
 package com.adrvil.wealthcheck.service;
 
+import com.adrvil.wealthcheck.common.exception.AccountNotAuthenticatedException;
+import com.adrvil.wealthcheck.common.exception.ResourceNotFound;
 import com.adrvil.wealthcheck.dto.GoogleUserDto;
 import com.adrvil.wealthcheck.entity.AccountEntity;
 import com.adrvil.wealthcheck.mapper.AccountMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.javassist.NotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,20 +34,14 @@ public class AccountService {
         return account;
     }
 
-    public Long getCurrentAccountIdOrThrow() throws NotFoundException {
+    public Long getCurrentAccountIdOrThrow() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
-            throw new NotFoundException("No authenticated user found");
-        }
-        Long userId = accountMapper.getUserIdByEmail(auth.getName());
-        if (userId == null) {
-            throw new NotFoundException("Account not found");
-        }
-        return userId;
-    }
+        if (auth == null || auth.getPrincipal() == null) throw new AccountNotAuthenticatedException("Account not authenticated");
 
-    public AccountEntity getAccountByUserId(Long userId) {
-        return accountMapper.findByUserId(userId);
+        Long userId = accountMapper.getUserIdByEmail(auth.getName());
+        if (userId == null) throw new ResourceNotFound("Account");
+
+        return userId;
     }
 
 }

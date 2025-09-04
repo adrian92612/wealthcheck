@@ -7,14 +7,14 @@ import com.adrvil.wealthcheck.entity.CategoryEntity;
 import java.time.Instant;
 
 public class CategoryDtoMapper {
-    public static CategoryEntity toEntity(CategoryReq req,Long userId) {
+    public static CategoryEntity toEntity(CategoryReq req, Long userId) {
         return CategoryEntity.builder()
                 .userId(userId)
                 .name(req.name())
                 .description(req.description())
                 .type(req.type())
                 .icon(req.icon())
-                .isActive(true)
+                .softDeleted(false)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
@@ -27,7 +27,6 @@ public class CategoryDtoMapper {
                 entity.getDescription(),
                 entity.getType(),
                 entity.getIcon(),
-                entity.isActive(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

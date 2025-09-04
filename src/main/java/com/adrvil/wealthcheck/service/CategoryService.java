@@ -1,15 +1,12 @@
 package com.adrvil.wealthcheck.service;
 
-import com.adrvil.wealthcheck.common.exception.CategoryCreationException;
+import com.adrvil.wealthcheck.common.exception.ResourceNotFound;
 import com.adrvil.wealthcheck.converter.CategoryDtoMapper;
 import com.adrvil.wealthcheck.dto.request.CategoryReq;
 import com.adrvil.wealthcheck.dto.response.CategoryRes;
 import com.adrvil.wealthcheck.entity.CategoryEntity;
 import com.adrvil.wealthcheck.mapper.CategoryMapper;
 import lombok.RequiredArgsConstructor;
-import org.apache.ibatis.exceptions.PersistenceException;
-import org.apache.ibatis.javassist.NotFoundException;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,33 +18,28 @@ public class CategoryService {
     private final AccountService accountService;
     private final CategoryMapper categoryMapper;
 
-    public CategoryRes createCategory(CategoryReq req) throws NotFoundException {
+    public CategoryRes createCategory(CategoryReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         CategoryEntity categoryEntity = CategoryDtoMapper.toEntity(req, userId);
-        try {
-            categoryMapper.insertCategory(categoryEntity);
-        } catch (PersistenceException | DataAccessException e) {
-            throw new CategoryCreationException("Unable to create category", e);
-        }
+        categoryMapper.insertCategory(categoryEntity);
         return CategoryDtoMapper.toDto(categoryEntity);
     }
 
-    public CategoryRes updateCategory(Long id, CategoryReq req) throws NotFoundException {
+    public CategoryRes updateCategory(Long id, CategoryReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         int i = categoryMapper.updateCategory(id, userId, req);
-        if (i == 1) {
-            return CategoryDtoMapper.toDto(categoryMapper.getCategoryByIdAndUserId(id, userId));
-        }
-        throw new NotFoundException("Unable to update category");
+        if (i == 0) throw new ResourceNotFound("Category");
+        return CategoryDtoMapper.toDto(categoryMapper.getCategoryByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFound("Category")));
     }
 
-    public CategoryRes getCategory(Long id) throws NotFoundException {
+    public CategoryRes getCategory(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        CategoryEntity categoryEntity = categoryMapper.getCategoryByIdAndUserId(id, userId);
-        return CategoryDtoMapper.toDto(categoryEntity);
+        return CategoryDtoMapper.toDto(categoryMapper.getCategoryByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFound("Category")));
     }
 
-    public List<CategoryRes> getAllCategories() throws NotFoundException {
+    public List<CategoryRes> getAllCategories() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         List<CategoryEntity> categoryEntityList = categoryMapper.getAllCategoryByUserId(userId);
         return categoryEntityList.stream()
@@ -55,9 +47,12 @@ public class CategoryService {
                 .toList();
     }
 
-    public void deleteCategory(Long id) throws NotFoundException {
+    public CategoryRes deleteCategory(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        CategoryEntity categoryEntity = categoryMapper.getCategoryByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFound("Category"));
         int i = categoryMapper.softDeleteCategory(id, userId);
-        if (i == 0) throw new NotFoundException("Unable to delete category");
+        if (i == 0) throw new ResourceNotFound("Category");
+        return CategoryDtoMapper.toDto(categoryEntity);
     }
 }

@@ -8,39 +8,56 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CategoryMapper {
 
-    @Select("""
-        SELECT * FROM category
-        WHERE id = #{id} AND user_id = #{userId} AND is_active = TRUE
-    """)
-    CategoryEntity getCategoryByIdAndUserId(Long id, Long userId);
-
-    @Select("""
-        SELECT * FROM category
-        WHERE user_id = #{userId} AND is_active = TRUE
-    """)
-    List<CategoryEntity> getAllCategoryByUserId(Long userId);
-
     @Insert("""
-        INSERT INTO category (user_id, name, description, type, icon, is_active, created_at, updated_at)
-        VALUES (#{userId}, #{name}, #{description}, #{type}, #{icon}, #{isActive}, #{createdAt}, #{updatedAt})
-    """)
+            INSERT INTO category (
+                user_id,
+                name,
+                description,
+                type,
+                icon,
+                soft_deleted,
+                created_at,
+                updated_at)
+            VALUES (
+                #{userId},
+                #{name},
+                #{description},
+                #{type},
+                #{icon},
+                #{softDeleted},
+                #{createdAt},
+                #{updatedAt})
+            """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insertCategory(CategoryEntity category);
 
+    @Select("""
+            SELECT * FROM category
+            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+            """)
+    Optional<CategoryEntity> getCategoryByIdAndUserId(Long id, Long userId);
+
+    @Select("""
+            SELECT * FROM category
+            WHERE user_id = #{userId} AND soft_deleted = FALSE
+            """)
+    List<CategoryEntity> getAllCategoryByUserId(Long userId);
+
     @Update("""
-        UPDATE category
-        SET name = #{req.name}, description = #{req.description}, type = #{req.type}, icon = #{req.icon}, updated_at = NOW()
-        WHERE id = #{id} AND user_id = #{userId}
-    """)
+            UPDATE category
+            SET name = #{req.name}, description = #{req.description}, type = #{req.type}, icon = #{req.icon}, updated_at = NOW()
+            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+            """)
     int updateCategory(Long id, Long userId, CategoryReq req);
 
     @Update("""
-        UPDATE category
-        SET is_active = FALSE, updated_at = NOW()
-        WHERE id = #{id} AND user_id = #{userId}
-    """)
+            UPDATE category
+            SET soft_deleted = TRUE, updated_at = NOW()
+            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+            """)
     int softDeleteCategory(Long id, Long userId);
 }
