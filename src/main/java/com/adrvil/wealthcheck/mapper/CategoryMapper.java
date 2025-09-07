@@ -26,7 +26,7 @@ public interface CategoryMapper {
                 #{userId},
                 #{name},
                 #{description},
-                #{type},
+                CAST(#{type} AS category_type),
                 #{icon},
                 #{softDeleted},
                 #{createdAt},
@@ -49,7 +49,11 @@ public interface CategoryMapper {
 
     @Update("""
             UPDATE category
-            SET name = #{req.name}, description = #{req.description}, type = #{req.type}, icon = #{req.icon}, updated_at = NOW()
+            SET name = #{req.name},
+                description = #{req.description},
+                type = CAST(#{req.type} AS category_type),
+                icon = #{req.icon},
+                updated_at = NOW()
             WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int updateCategory(Long id, Long userId, CategoryReq req);
