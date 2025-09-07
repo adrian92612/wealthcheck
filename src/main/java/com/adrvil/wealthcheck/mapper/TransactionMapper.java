@@ -33,7 +33,7 @@ public interface TransactionMapper {
                     #{title},
                     #{notes},
                     #{amount},
-                    #{type},
+                    CAST(#{type} AS transaction_type),
                     #{softDeleted},
                     #{createdAt},
                     #{updatedAt})
@@ -50,7 +50,7 @@ public interface TransactionMapper {
                     title = #{title},
                     notes = #{notes},
                     amount = #{amount},
-                    type = #{type},
+                    type = CAST(#{type} AS transaction_type),
                     updated_at = NOW()
                 WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
