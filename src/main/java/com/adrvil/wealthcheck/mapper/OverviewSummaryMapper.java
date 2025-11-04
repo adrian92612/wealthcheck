@@ -58,7 +58,7 @@ public interface OverviewSummaryMapper {
                 SELECT type AS type, title AS name, amount
                 FROM transactions
                 ORDER BY created_at DESC
-                LIMIT 10
+                LIMIT 5
             """)
     List<TopTransactionsDto> getRecentTransactions();
 

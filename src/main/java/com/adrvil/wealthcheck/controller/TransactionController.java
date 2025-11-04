@@ -1,15 +1,15 @@
 package com.adrvil.wealthcheck.controller;
 
 import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
+import com.adrvil.wealthcheck.dto.TransactionFilterDto;
 import com.adrvil.wealthcheck.dto.request.TransactionReq;
+import com.adrvil.wealthcheck.dto.response.TransactionFilterRes;
 import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/transaction")
@@ -19,8 +19,8 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @GetMapping
-    public ApiResponseEntity<List<TransactionRes>> getAllTransactions() {
-        return ApiResponseEntity.success(HttpStatus.OK, "Transaction List", transactionService.getAllTransactions());
+    public ApiResponseEntity<TransactionFilterRes> getAllTransactions(TransactionFilterDto filter) {
+        return ApiResponseEntity.success(HttpStatus.OK, "Transaction List", transactionService.getAllTransactions(filter));
     }
 
     @GetMapping("/{id}")

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.adrvil.wealthcheck.mapper.TransactionMapper">
+
+    <select id="countTransactions" resultType="long">
+        SELECT COUNT(*)
+        FROM transactions t
+        LEFT JOIN wallet fw ON t.from_wallet_id = fw.id
+        LEFT JOIN wallet tw ON t.to_wallet_id = tw.id
+        LEFT JOIN category c ON t.category_id = c.id
+        WHERE t.user_id = #{userId}
+        AND t.soft_deleted = FALSE
+
+        <!-- type filter -->
+        <if test="filter.type != null">
+            AND t.type = CAST(#{filter.type} AS transaction_type)
+        </if>
+
+        <!-- wallet filter -->
+        <if test="filter.walletId != null">
+            AND (t.from_wallet_id = #{filter.walletId} OR t.to_wallet_id = #{filter.walletId})
+        </if>
+
+        <!-- category filter -->
+        <if test="filter.categoryId != null">
+            AND t.category_id = #{filter.categoryId}
+        </if>
+
+        <!-- single-day filter -->
+        <if test="filter.fromDate != null and filter.toDate != null and filter.fromDate.equals(filter.toDate)">
+            AND DATE(t.created_at) = #{filter.fromDate}
+        </if>
+
+        <!-- date range filter -->
+        <if test="filter.fromDate != null and filter.toDate != null and !filter.fromDate.equals(filter.toDate)">
+            AND DATE(t.created_at) BETWEEN #{filter.fromDate} AND #{filter.toDate}
+        </if>
+
+        <!-- only fromDate -->
+        <if test="filter.fromDate != null and (filter.toDate == null)">
+            AND DATE(t.created_at) &gt;= #{filter.fromDate}
+        </if>
+
+        <!-- only toDate -->
+        <if test="filter.toDate != null and (filter.fromDate == null)">
+            AND DATE(t.created_at) &lt;= #{filter.toDate}
+        </if>
+
+        <!-- search -->
+        <if test="filter.search != null and filter.search != ''">
+            AND (LOWER(t.title) LIKE CONCAT('%', LOWER(#{filter.search}), '%')
+            OR LOWER(t.notes) LIKE CONCAT('%', LOWER(#{filter.search}), '%'))
+        </if>
+    </select>
+
+
+    <select id="findTransactions"
+            resultType="com.adrvil.wealthcheck.dto.response.TransactionRes">
+        SELECT
+        t.id,
+        t.from_wallet_id AS fromWalletId,
+        t.to_wallet_id AS toWalletId,
+        t.category_id AS categoryId,
+        fw.name AS fromWalletName,
+        tw.name AS toWalletName,
+        c.name AS categoryName,
+        c.icon AS categoryIcon,
+        t.title,
+        t.notes,
+        t.amount,
+        t.type,
+        t.created_at AS createdAt,
+        t.updated_at AS updatedAt
+        FROM transactions t
+        LEFT JOIN wallet fw ON t.from_wallet_id = fw.id
+        LEFT JOIN wallet tw ON t.to_wallet_id = tw.id
+        LEFT JOIN category c ON t.category_id = c.id
+        WHERE t.user_id = #{userId}
+        AND t.soft_deleted = FALSE
+
+        <!-- type filter -->
+        <if test="filter.type != null">
+            AND t.type = CAST(#{filter.type} AS transaction_type)
+        </if>
+
+        <!-- wallet filter -->
+        <if test="filter.walletId != null">
+            AND (t.from_wallet_id = #{filter.walletId} OR t.to_wallet_id = #{filter.walletId})
+        </if>
+
+        <!-- category filter -->
+        <if test="filter.categoryId != null">
+            AND t.category_id = #{filter.categoryId}
+        </if>
+
+        <!-- single-day filter -->
+        <if test="filter.fromDate != null and filter.toDate != null and filter.fromDate == filter.toDate">
+            AND DATE(t.created_at) = #{filter.fromDate}
+        </if>
+
+        <!-- date range filter -->
+        <if test="filter.fromDate != null and filter.toDate != null and filter.fromDate != filter.toDate">
+            AND DATE(t.created_at) BETWEEN #{filter.fromDate} AND #{filter.toDate}
+        </if>
+
+        <!-- only fromDate -->
+        <if test="filter.fromDate != null and (filter.toDate == null)">
+            AND DATE(t.created_at) &gt;= #{filter.fromDate}
+        </if>
+
+        <!-- only toDate -->
+        <if test="filter.toDate != null and (filter.fromDate == null)">
+            AND DATE(t.created_at) &lt;= #{filter.toDate}
+        </if>
+
+        <!-- search -->
+        <if test="filter.search != null and filter.search != ''">
+            AND (LOWER(t.title) LIKE CONCAT('%', LOWER(#{filter.search}), '%')
+            OR LOWER(t.notes) LIKE CONCAT('%', LOWER(#{filter.search}), '%'))
+        </if>
+
+        ORDER BY t.created_at DESC
+
+        <!-- pagination -->
+        <if test="filter.page != null and filter.size != null">
+            LIMIT #{filter.size} OFFSET ${(filter.page - 1) * filter.size}
+        </if>
+    </select>
+
+
+</mapper>
