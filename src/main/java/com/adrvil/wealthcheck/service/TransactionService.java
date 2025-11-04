@@ -2,7 +2,9 @@ package com.adrvil.wealthcheck.service;
 
 import com.adrvil.wealthcheck.common.exception.*;
 import com.adrvil.wealthcheck.converter.TransactionDtoMapper;
+import com.adrvil.wealthcheck.dto.TransactionFilterDto;
 import com.adrvil.wealthcheck.dto.request.TransactionReq;
+import com.adrvil.wealthcheck.dto.response.TransactionFilterRes;
 import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.entity.CategoryEntity;
 import com.adrvil.wealthcheck.entity.TransactionEntity;
@@ -87,9 +89,12 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
 
-    public List<TransactionRes> getAllTransactions() {
+    public TransactionFilterRes getAllTransactions(TransactionFilterDto filter) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        return transactionMapper.findAllResByUserId(userId);
+        long transactionCount = transactionMapper.countTransactions(userId, filter);
+        List<TransactionRes> transactionResList = transactionMapper.findTransactions(userId, filter);
+
+        return TransactionFilterRes.of(transactionResList, filter, transactionCount);
     }
 
     @Transactional

@@ -1,6 +1,7 @@
 package com.adrvil.wealthcheck.controller;
 
 import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
+import com.adrvil.wealthcheck.dto.UserInfoDto;
 import com.adrvil.wealthcheck.entity.AccountEntity;
 import com.adrvil.wealthcheck.common.exception.GoogleAuthException;
 import com.adrvil.wealthcheck.mapper.AccountMapper;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,17 +60,15 @@ public class GoogleAuthController {
     }
 
     @GetMapping("/me")
-    public ApiResponseEntity<Map<String, String>> getCurrentUser(Authentication authentication) {
+    public ApiResponseEntity<UserInfoDto> getCurrentUser(Authentication authentication) {
         log.info("Current user: {}", authentication.getPrincipal());
         if (authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
             AccountEntity account = accountMapper.findByEmail(authentication.getName());
             if (account == null) {
                 return ApiResponseEntity.error(HttpStatus.NOT_FOUND, "Account not found", null);
             }
-            return ApiResponseEntity.success(HttpStatus.OK, "Authenticated", Map.of(
-                    "email", account.getEmail(),
-                    "name", account.getName()
-            ));
+            return ApiResponseEntity.success(HttpStatus.OK, "Authenticated",
+                    new UserInfoDto(account.getEmail(), account.getName(), account.getAvatarUrl()));
         }
         return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED, "Not Authenticated", null);
     }
