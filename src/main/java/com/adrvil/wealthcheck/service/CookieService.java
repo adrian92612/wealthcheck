@@ -26,7 +26,7 @@ public class CookieService {
         jwtCookie.setSecure(cookieSecure);
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(cookieMaxAge);
-        jwtCookie.setAttribute("SameSite", "Strict");
+        jwtCookie.setAttribute("SameSite", "Lax");
 
         response.addCookie(jwtCookie);
         log.debug("JWT cookie set successfully");
