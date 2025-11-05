@@ -8,9 +8,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class AccountEntity extends BaseEntity{
+public class AccountEntity extends BaseEntity {
     private String name;
     private String email;
+    private String providerId;
     private String avatarUrl;
     private boolean isActive;
 }
