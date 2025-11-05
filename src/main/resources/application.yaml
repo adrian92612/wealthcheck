@@ -22,11 +22,11 @@ google:
   oauth2:
     client-id: ${GOOGLE_CLIENT_ID}
     client-secret: ${GOOGLE_CLIENT_SECRET}
-    redirect-uri: http://localhost:8080/api/v1/auth/callback
+    redirect-uri: https://wealthcheck.duckdns.org/api/v1/auth/callback
 
 app:
   frontend:
-    url: http://localhost:5173
+    url: https://wealthcheck.duckdns.org
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
