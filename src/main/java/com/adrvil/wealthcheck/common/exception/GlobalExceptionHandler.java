@@ -22,6 +22,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFound.class)
     public ApiResponseEntity<Void> handleCreationExceptions(ResourceNotFound ex) {
+        log.error("Resource not found: ", ex);
         return ApiResponseEntity.error(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
@@ -41,6 +42,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ApiResponseEntity<Void> handleJacksonDeserialization(HttpMessageNotReadableException ex) {
+        log.error(ex.getMessage());
         Throwable cause = ex.getCause();
         if (cause instanceof InvalidFormatException invalidFormatEx &&
                 invalidFormatEx.getTargetType().isEnum()) {
@@ -51,7 +53,6 @@ public class GlobalExceptionHandler {
                             .map(Object::toString)
                             .toArray(String[]::new)
             );
-
             return ApiResponseEntity.error(
                     HttpStatus.BAD_REQUEST,
                     "Invalid value for " + invalidFormatEx.getPath().getFirst().getFieldName()
@@ -70,16 +71,19 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccountNotAuthenticatedException.class)
     public ApiResponseEntity<Void> handleCreationExceptions(AccountNotAuthenticatedException ex) {
+        log.error("Account not authenticated: ", ex);
         return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(GoogleAuthException.class)
     public ApiResponseEntity<Void> handleGoogleAuthException(GoogleAuthException ex) {
+        log.error("Google auth error: ", ex);
         return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
     public ApiResponseEntity<Void> handleGenericException(Exception ex) {
+        log.error("Unhandled exception: ", ex);
         return ApiResponseEntity.error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
 }

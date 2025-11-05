@@ -7,8 +7,8 @@ import org.apache.ibatis.annotations.Select;
 
 public interface AccountMapper {
 
-    @Insert("INSERT INTO account(name, email, avatar_url, is_active, created_at, updated_at) " +
-            "VALUES(#{name}, #{email}, #{avatarUrl}, #{isActive}, #{createdAt}, #{updatedAt})")
+    @Insert("INSERT INTO account(name, email, provider_id, avatar_url, is_active, created_at, updated_at) " +
+            "VALUES(#{name}, #{email}, #{providerId}, #{avatarUrl}, #{isActive}, #{createdAt}, #{updatedAt})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(AccountEntity account);
 
