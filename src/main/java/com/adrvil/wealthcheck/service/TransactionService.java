@@ -33,6 +33,7 @@ public class TransactionService {
     @Transactional
     public TransactionRes createTransaction(TransactionReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug("Creating transaction for user: {}, type: {}, amount: {}", userId, req.type(), req.amount());
         validateTransactionReq(req);
         validateCategoryType(userId, req.categoryId(), req.type());
 
@@ -42,9 +43,15 @@ public class TransactionService {
         WalletEntity fromWallet = fetchWallet(req.fromWalletId(), userId);
         WalletEntity toWallet = fetchWallet(req.toWalletId(), userId);
 
+        log.debug("Processing balance change - Type: {}, From: {}, To: {}, Amount: {}",
+                req.type(), req.fromWalletId(), req.toWalletId(), req.amount());
+
         processBalanceChange(userId, req.type(), fromWallet, toWallet, req.amount());
 
         transactionMapper.insert(transactionEntity);
+
+        log.info("Transaction created successfully - ID: {}, User: {}, Type: {}, Amount: {}",
+                transactionEntity.getId(), userId, req.type(), req.amount());
         return transactionMapper.findResByIdAndUserId(transactionEntity.getId(), userId)
                 .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
@@ -52,11 +59,18 @@ public class TransactionService {
     @Transactional
     public TransactionRes updateTransaction(Long id, TransactionReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        log.debug("Updating transaction - ID: {}, User: {}, New Type: {}, New Amount: {}",
+                id, userId, req.type(), req.amount());
+
         validateTransactionReq(req);
         validateCategoryType(userId, req.categoryId(), req.type());
 
         TransactionEntity existing = transactionMapper.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFound("Transaction"));
+
+        log.debug("Found existing transaction - Type: {}, Amount: {}, From: {}, To: {}",
+                existing.getType(), existing.getAmount(), existing.getFromWalletId(), existing.getToWalletId());
 
         WalletEntity oldFrom = fetchWallet(existing.getFromWalletId(), userId);
         WalletEntity oldTo = fetchWallet(existing.getToWalletId(), userId);
@@ -64,7 +78,11 @@ public class TransactionService {
         WalletEntity newFrom = fetchWallet(req.fromWalletId(), userId);
         WalletEntity newTo = fetchWallet(req.toWalletId(), userId);
 
+        log.debug("Reverting old balance - Type: {}, Amount: {}", existing.getType(), existing.getAmount());
+
         processBalanceRevert(userId, existing.getType(), oldFrom, oldTo, existing.getAmount());
+
+        log.debug("Applying new balance - Type: {}, Amount: {}", req.type(), req.amount());
 
         processBalanceChange(userId, req.type(), newFrom, newTo, req.amount());
 
@@ -77,22 +95,41 @@ public class TransactionService {
         existing.setType(req.type());
 
         int updated = transactionMapper.update(existing);
-        if (updated == 0) throw new ResourceNotFound("Transaction");
+        if (updated == 0) {
+            log.warn("Transaction update failed - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Transaction");
+        }
 
+        log.info("Transaction updated successfully - ID: {}, User: {}, Type: {}, Amount: {}",
+                id, userId, req.type(), req.amount());
         return transactionMapper.findResByIdAndUserId(existing.getId(), userId)
                 .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
 
     public TransactionRes getTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        return transactionMapper.findResByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFound("Transaction"));
+        log.debug("Fetching transaction - ID: {}, User: {}", id, userId);
+
+        TransactionRes transaction = transactionMapper.findResByIdAndUserId(id, userId)
+                .orElseThrow(() -> {
+                    log.warn("Transaction not found - ID: {}, User: {}", id, userId);
+                    return new ResourceNotFound("Transaction");
+                });
+
+        log.debug("Transaction found - ID: {}, Type: {}, Amount: {}", id, transaction.type(), transaction.amount());
+        return transaction;
     }
 
     public TransactionFilterRes getAllTransactions(TransactionFilterDto filter) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        log.debug("Fetching all transactions for user: {}, filters: {}", userId, filter);
+
         long transactionCount = transactionMapper.countTransactions(userId, filter);
         List<TransactionRes> transactionResList = transactionMapper.findTransactions(userId, filter);
+
+        log.info("Returning {} transactions for user: {} with filters: {}",
+                transactionCount, userId, filter);
 
         return TransactionFilterRes.of(transactionResList, filter, transactionCount);
     }
@@ -100,16 +137,33 @@ public class TransactionService {
     @Transactional
     public TransactionRes deleteTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        log.debug("Soft deleting transaction - ID: {}, User: {}", id, userId);
+
         TransactionRes existingRes = transactionMapper.findResByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFound("Transaction"));
+                .orElseThrow(() -> {
+                    log.warn("Transaction not found for deletion - ID: {}, User: {}", id, userId);
+                    return new ResourceNotFound("Transaction");
+                });
+
+        log.debug("Found transaction to delete - Type: {}, Amount: {}, From: {}, To: {}",
+                existingRes.type(), existingRes.amount(), existingRes.fromWalletId(), existingRes.toWalletId());
 
         WalletEntity oldFrom = fetchWallet(existingRes.fromWalletId(), userId);
         WalletEntity oldTo = fetchWallet(existingRes.toWalletId(), userId);
 
+        log.debug("Reverting balance for deletion - Type: {}, Amount: {}", existingRes.type(), existingRes.amount());
+
         processBalanceRevert(userId, existingRes.type(), oldFrom, oldTo, existingRes.amount());
 
         int deleted = transactionMapper.softDelete(userId, id);
-        if (deleted == 0) throw new ResourceNotFound("Transaction");
+        if (deleted == 0) {
+            log.warn("Transaction soft delete failed - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Transaction");
+        }
+
+        log.info("Transaction soft deleted successfully - ID: {}, User: {}, Type: {}, Amount: {}",
+                id, userId, existingRes.type(), existingRes.amount());
 
         return existingRes;
     }

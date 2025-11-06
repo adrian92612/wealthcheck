@@ -7,52 +7,53 @@
 
     <select id="countTransactions" resultType="long">
         SELECT COUNT(*)
-        FROM transactions t
-        LEFT JOIN wallet fw ON t.from_wallet_id = fw.id
-        LEFT JOIN wallet tw ON t.to_wallet_id = tw.id
-        LEFT JOIN category c ON t.category_id = c.id
-        WHERE t.user_id = #{userId}
-        AND t.soft_deleted = FALSE
+        FROM transactions
+        WHERE user_id = #{userId}
+        AND soft_deleted = FALSE
 
         <!-- type filter -->
         <if test="filter.type != null">
-            AND t.type = CAST(#{filter.type} AS transaction_type)
+            AND type = #{filter.type}::transaction_type
         </if>
 
         <!-- wallet filter -->
         <if test="filter.walletId != null">
-            AND (t.from_wallet_id = #{filter.walletId} OR t.to_wallet_id = #{filter.walletId})
+            AND (from_wallet_id = #{filter.walletId} OR to_wallet_id = #{filter.walletId})
         </if>
 
         <!-- category filter -->
         <if test="filter.categoryId != null">
-            AND t.category_id = #{filter.categoryId}
+            AND category_id = #{filter.categoryId}
         </if>
 
-        <!-- single-day filter -->
-        <if test="filter.fromDate != null and filter.toDate != null and filter.fromDate.equals(filter.toDate)">
-            AND DATE(t.created_at) = #{filter.fromDate}
-        </if>
-
-        <!-- date range filter -->
-        <if test="filter.fromDate != null and filter.toDate != null and !filter.fromDate.equals(filter.toDate)">
-            AND DATE(t.created_at) BETWEEN #{filter.fromDate} AND #{filter.toDate}
-        </if>
-
-        <!-- only fromDate -->
-        <if test="filter.fromDate != null and (filter.toDate == null)">
-            AND DATE(t.created_at) &gt;= #{filter.fromDate}
-        </if>
-
-        <!-- only toDate -->
-        <if test="filter.toDate != null and (filter.fromDate == null)">
-            AND DATE(t.created_at) &lt;= #{filter.toDate}
-        </if>
+        <choose>
+            <!-- Single day - use range for index -->
+            <when test="filter.fromDate != null and filter.toDate != null and filter.fromDate.equals(filter.toDate)">
+                AND created_at &gt;= #{filter.fromDate}::date
+                AND created_at &lt; (#{filter.fromDate}::date + INTERVAL '1 day')
+            </when>
+            <!-- Date range - use range for index -->
+            <when test="filter.fromDate != null and filter.toDate != null">
+                AND created_at &gt;= #{filter.fromDate}::date
+                AND created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+            </when>
+            <!-- Only from date -->
+            <when test="filter.fromDate != null">
+                AND created_at &gt;= #{filter.fromDate}::date
+            </when>
+            <!-- Only to date -->
+            <when test="filter.toDate != null">
+                AND created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+            </when>
+        </choose>
 
         <!-- search -->
         <if test="filter.search != null and filter.search != ''">
-            AND (LOWER(t.title) LIKE CONCAT('%', LOWER(#{filter.search}), '%')
-            OR LOWER(t.notes) LIKE CONCAT('%', LOWER(#{filter.search}), '%'))
+            AND (
+            title ILIKE '%' || #{filter.search} || '%'
+            OR notes ILIKE '%' || #{filter.search} || '%'
+            OR title % #{filter.search}
+            )
         </if>
     </select>
 
@@ -75,15 +76,15 @@
         t.created_at AS createdAt,
         t.updated_at AS updatedAt
         FROM transactions t
-        LEFT JOIN wallet fw ON t.from_wallet_id = fw.id
-        LEFT JOIN wallet tw ON t.to_wallet_id = tw.id
-        LEFT JOIN category c ON t.category_id = c.id
+        LEFT JOIN wallet fw ON t.from_wallet_id = fw.id AND fw.user_id = #{userId}
+        LEFT JOIN wallet tw ON t.to_wallet_id = tw.id AND tw.user_id = #{userId}
+        LEFT JOIN category c ON t.category_id = c.id AND c.user_id = #{userId}
         WHERE t.user_id = #{userId}
         AND t.soft_deleted = FALSE
 
         <!-- type filter -->
         <if test="filter.type != null">
-            AND t.type = CAST(#{filter.type} AS transaction_type)
+            AND t.type = #{filter.type}::transaction_type
         </if>
 
         <!-- wallet filter -->
@@ -96,30 +97,35 @@
             AND t.category_id = #{filter.categoryId}
         </if>
 
-        <!-- single-day filter -->
-        <if test="filter.fromDate != null and filter.toDate != null and filter.fromDate == filter.toDate">
-            AND DATE(t.created_at) = #{filter.fromDate}
-        </if>
+        <!-- Date filters - consistent with countTransactions -->
+        <choose>
+            <!-- Single day - use range for index -->
+            <when test="filter.fromDate != null and filter.toDate != null and filter.fromDate.equals(filter.toDate)">
+                AND t.created_at &gt;= #{filter.fromDate}::date
+                AND t.created_at &lt; (#{filter.fromDate}::date + INTERVAL '1 day')
+            </when>
+            <!-- Date range - use range for index -->
+            <when test="filter.fromDate != null and filter.toDate != null">
+                AND t.created_at &gt;= #{filter.fromDate}::date
+                AND t.created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+            </when>
+            <!-- Only from date -->
+            <when test="filter.fromDate != null">
+                AND t.created_at &gt;= #{filter.fromDate}::date
+            </when>
+            <!-- Only to date -->
+            <when test="filter.toDate != null">
+                AND t.created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+            </when>
+        </choose>
 
-        <!-- date range filter -->
-        <if test="filter.fromDate != null and filter.toDate != null and filter.fromDate != filter.toDate">
-            AND DATE(t.created_at) BETWEEN #{filter.fromDate} AND #{filter.toDate}
-        </if>
-
-        <!-- only fromDate -->
-        <if test="filter.fromDate != null and (filter.toDate == null)">
-            AND DATE(t.created_at) &gt;= #{filter.fromDate}
-        </if>
-
-        <!-- only toDate -->
-        <if test="filter.toDate != null and (filter.fromDate == null)">
-            AND DATE(t.created_at) &lt;= #{filter.toDate}
-        </if>
-
-        <!-- search -->
+        <!-- Full-text search - consistent with countTransactions -->
         <if test="filter.search != null and filter.search != ''">
-            AND (LOWER(t.title) LIKE CONCAT('%', LOWER(#{filter.search}), '%')
-            OR LOWER(t.notes) LIKE CONCAT('%', LOWER(#{filter.search}), '%'))
+            AND (
+            t.title ILIKE '%' || #{filter.search} || '%'
+            OR t.notes ILIKE '%' || #{filter.search} || '%'
+            OR t.title % #{filter.search}
+            )
         </if>
 
         ORDER BY t.created_at DESC
