@@ -31,8 +31,7 @@ public class GoogleAuthController {
 
     @GetMapping("/google")
     public void login(HttpServletResponse response) throws IOException {
-        String googleAuthUrl = googleAuthService.getGoogleAuthUrl();
-        response.sendRedirect(googleAuthUrl);
+        response.sendRedirect(googleAuthService.getGoogleAuthUrl());
     }
 
     @GetMapping("/callback")
@@ -56,21 +55,26 @@ public class GoogleAuthController {
     @GetMapping("/logout")
     public void logout(HttpServletResponse response) throws IOException {
         cookieService.clearJwtCookie(response);
-        response.sendRedirect(googleAuthService.getFrontendUrl() + "/login");
+        response.sendRedirect(googleAuthService.getFrontendUrl());
     }
 
     @GetMapping("/me")
     public ApiResponseEntity<UserInfoDto> getCurrentUser(Authentication authentication) {
-        log.info("Current user: {}", authentication.getPrincipal());
-        if (authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
-            AccountEntity account = accountMapper.findByEmail(authentication.getName());
-            if (account == null) {
-                return ApiResponseEntity.error(HttpStatus.NOT_FOUND, "Account not found", null);
-            }
-            return ApiResponseEntity.success(HttpStatus.OK, "Authenticated",
-                    new UserInfoDto(account.getEmail(), account.getName(), account.getAvatarUrl()));
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            log.info("Unauthenticated request to /me");
+            return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED, "Not Authenticated", null);
         }
-        return ApiResponseEntity.error(HttpStatus.UNAUTHORIZED, "Not Authenticated", null);
+
+        log.info("Current user: {}", authentication.getPrincipal());
+
+        AccountEntity account = accountMapper.findByEmail(authentication.getName());
+        if (account == null) {
+            return ApiResponseEntity.error(HttpStatus.NOT_FOUND, "Account not found", null);
+        }
+
+        return ApiResponseEntity.success(HttpStatus.OK, "Authenticated",
+                new UserInfoDto(account.getEmail(), account.getName(), account.getAvatarUrl()));
     }
 
 }
