@@ -56,12 +56,19 @@ public class OverviewSummaryService {
 
         log.debug("Looking up {} category names for user {}", allCategoryIds.size(), userId);
 
-        List<CategoryNameProjection> categories = overviewSummaryMapper.findCategoryNamesByIds(userId, allCategoryIds);
-        Map<Long, String> categoryNames = categories.stream()
-                .collect(Collectors.toMap(
-                        CategoryNameProjection::id,
-                        CategoryNameProjection::name
-                ));
+        Map<Long, String> categoryNames;
+        if (allCategoryIds.isEmpty()) {
+            log.debug("No category IDs to look up, using empty map");
+            categoryNames = Collections.emptyMap();
+        } else {
+            List<CategoryNameProjection> categories = overviewSummaryMapper.findCategoryNamesByIds(userId, allCategoryIds);
+            categoryNames = categories.stream()
+                    .collect(Collectors.toMap(
+                            CategoryNameProjection::id,
+                            CategoryNameProjection::name
+                    ));
+            log.debug("Successfully mapped {} category names", categoryNames.size());
+        }
 
         log.debug("Successfully mapped {} category names", categoryNames.size());
 
