@@ -22,21 +22,41 @@ public class WalletService {
 
     public WalletRes createWallet(WalletReq walletDtoReq) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        log.debug("Creating wallet for user: {}, name: {}", userId, walletDtoReq.name());
+
         WalletEntity wallet = WalletDtoMapper.toEntity(userId, walletDtoReq);
         walletMapper.insert(wallet);
+
+        log.info("Wallet created successfully - ID: {}, User: {}, Name: {}",
+                wallet.getId(), userId, walletDtoReq.name());
+
         return WalletDtoMapper.toDto(wallet);
     }
 
     public WalletRes getWalletById(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFound("Wallet")));
+
+        log.debug("Fetching wallet - ID: {}, User: {}", id, userId);
+
+        WalletEntity wallet = walletMapper.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> {
+                    log.warn("Wallet not found - ID: {}, User: {}", id, userId);
+                    return new ResourceNotFound("Wallet");
+                });
+
+        log.debug("Wallet found - ID: {}, Name: {}, Balance: {}", id, wallet.getName(), wallet.getBalance());
+        return WalletDtoMapper.toDto(wallet);
     }
 
     public List<WalletRes> getAllWallets() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        log.debug("Fetching all wallets for user: {}", userId);
+
         List<WalletEntity> walletEntityList = walletMapper.findByUserId(userId);
-        log.debug("WALLET LIST: {}", walletEntityList);
+
+        log.info("Returning {} wallets for user: {}", walletEntityList.size(), userId);
 
         return walletEntityList.stream()
                 .map(WalletDtoMapper::toDto)
@@ -45,18 +65,42 @@ public class WalletService {
 
     public WalletRes updateWallet(Long id, WalletReq walletDtoReq) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        int i = walletMapper.updateWallet(id, userId, walletDtoReq);
-        if (i == 0) throw new ResourceNotFound("Wallet");
+
+        log.debug("Updating wallet - ID: {}, User: {}, New name: {}, New balance: {}",
+                id, userId, walletDtoReq.name(), walletDtoReq.balance());
+
+        int updated = walletMapper.updateWallet(id, userId, walletDtoReq);
+        if (updated == 0) {
+            log.warn("Wallet update failed - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Wallet");
+        }
+
+        log.info("Wallet updated successfully - ID: {}, User: {}", id, userId);
+
         return WalletDtoMapper.toDto(walletMapper.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFound("Wallet")));
     }
 
     public WalletRes softDelete(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        log.debug("Soft deleting wallet - ID: {}, User: {}", id, userId);
+
         WalletEntity wallet = walletMapper.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFound("Wallet"));
+                .orElseThrow(() -> {
+                    log.warn("Wallet not found for deletion - ID: {}, User: {}", id, userId);
+                    return new ResourceNotFound("Wallet");
+                });
+
         int deleted = walletMapper.softDelete(id, userId);
-        if (deleted == 0) throw new ResourceNotFound("Wallet");
+        if (deleted == 0) {
+            log.warn("Wallet soft delete failed - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Wallet");
+        }
+
+        log.info("Wallet soft deleted successfully - ID: {}, User: {}, Name: {}",
+                id, userId, wallet.getName());
+
         return WalletDtoMapper.toDto(wallet);
     }
 }
