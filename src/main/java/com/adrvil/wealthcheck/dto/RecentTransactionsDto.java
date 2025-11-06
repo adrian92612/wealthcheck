@@ -4,9 +4,9 @@ import com.adrvil.wealthcheck.enums.TransactionType;
 
 import java.math.BigDecimal;
 
-public record TopTransactionsDto(
+public record RecentTransactionsDto(
         TransactionType type,
-        String categoryName,
+        String title,
         BigDecimal amount
 ) {
 }

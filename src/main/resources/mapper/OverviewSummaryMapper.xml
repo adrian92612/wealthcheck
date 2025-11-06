@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.adrvil.wealthcheck.mapper.OverviewSummaryMapper">
+
+    <select id="findCategoryNamesByIds" resultType="com.adrvil.wealthcheck.dto.CategoryNameProjection">
+        SELECT id, name
+        FROM category
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+        AND user_id = #{userId}
+    </select>
+
+</mapper>
