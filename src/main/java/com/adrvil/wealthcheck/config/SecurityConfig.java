@@ -26,6 +26,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final JsonAuthHandler jsonAuthHandler;
 
     @Value("${app.frontend.url}")
     private String frontEndUrl;
@@ -37,6 +38,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jsonAuthHandler)
+                        .accessDeniedHandler(jsonAuthHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/health", "/auth/**")
                         .permitAll().anyRequest().authenticated())
