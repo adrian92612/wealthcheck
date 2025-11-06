@@ -26,7 +26,7 @@ public interface CategoryMapper {
                 #{userId},
                 #{name},
                 #{description},
-                CAST(#{type} AS category_type),
+                #{type}::category_type,
                 #{icon},
                 #{softDeleted},
                 #{createdAt},
@@ -36,32 +36,54 @@ public interface CategoryMapper {
     void insertCategory(CategoryEntity category);
 
     @Select("""
-            SELECT * FROM category
-            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+                SELECT
+                    id,
+                    user_id,
+                    name,
+                    description,
+                    type,
+                    icon,
+                    created_at,
+                    updated_at
+                FROM category
+                WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     Optional<CategoryEntity> getCategoryByIdAndUserId(Long id, Long userId);
 
     @Select("""
-            SELECT * FROM category
-            WHERE user_id = #{userId} AND soft_deleted = FALSE
+                SELECT
+                    id,
+                    user_id,
+                    name,
+                    description,
+                    type,
+                    icon,
+                    created_at,
+                    updated_at
+                FROM category
+                WHERE user_id = #{userId} AND soft_deleted = FALSE
+                ORDER BY created_at DESC
             """)
     List<CategoryEntity> getAllCategoryByUserId(Long userId);
 
     @Update("""
-            UPDATE category
-            SET name = #{req.name},
-                description = #{req.description},
-                type = CAST(#{req.type} AS category_type),
-                icon = #{req.icon},
-                updated_at = NOW()
-            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+                UPDATE category
+                SET
+                    name = #{req.name},
+                    description = #{req.description},
+                    type = #{req.type}::category_type,
+                    icon = #{req.icon},
+                    updated_at = NOW()
+                WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int updateCategory(Long id, Long userId, CategoryReq req);
 
     @Update("""
-            UPDATE category
-            SET soft_deleted = TRUE, updated_at = NOW()
-            WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
+                UPDATE category
+                SET
+                    soft_deleted = TRUE,
+                    updated_at = NOW()
+                WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int softDeleteCategory(Long id, Long userId);
 }

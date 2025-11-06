@@ -21,6 +21,9 @@ public class AccountService {
     private final AccountMapper accountMapper;
 
     public AccountEntity createAccount(GoogleUserDto googleUserDto) {
+        log.debug("Creating account for Google user - Email: {}, Name: {}, Provider ID: {}",
+                googleUserDto.email(), googleUserDto.name(), googleUserDto.id());
+
         AccountEntity account = AccountEntity.builder()
                 .name(googleUserDto.name())
                 .email(googleUserDto.email())
@@ -32,16 +35,37 @@ public class AccountService {
                 .build();
 
         accountMapper.insert(account);
+
+        log.info("Account created successfully - ID: {}, Email: {}, Name: {}",
+                account.getId(), account.getEmail(), account.getName());
+
         return account;
     }
 
     public Long getCurrentAccountIdOrThrow() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) throw new AccountNotAuthenticatedException("Account not authenticated");
 
-        Long userId = accountMapper.getUserIdByEmail(auth.getName());
-        if (userId == null) throw new ResourceNotFound("Account");
+        if (auth == null) {
+            log.warn("Authentication is null - no security context found");
+            throw new AccountNotAuthenticatedException("Account not authenticated");
+        }
 
+        if (auth.getPrincipal() == null) {
+            log.warn("Authentication principal is null - Name: {}", auth.getName());
+            throw new AccountNotAuthenticatedException("Account not authenticated");
+        }
+
+        String email = auth.getName();
+        log.debug("Looking up user ID for authenticated email: {}", email);
+
+        Long userId = accountMapper.getUserIdByEmail(email);
+
+        if (userId == null) {
+            log.warn("User ID not found for email: {}", email);
+            throw new ResourceNotFound("Account");
+        }
+
+        log.debug("Found user ID: {} for email: {}", userId, email);
         return userId;
     }
 
