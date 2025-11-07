@@ -32,3 +32,22 @@ mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,beans
+  endpoint:
+    health:
+      show-details: always
+    info:
+      access: read_only
+    metrics:
+      access: read_only
+    # Sensitive endpoints disabled or secured
+    env:
+      access: read_only
+      show-values: when_authorized
+    beans:
+      access: read_only
