@@ -13,7 +13,12 @@ import java.util.List;
 import java.util.Set;
 
 public interface OverviewSummaryMapper {
-    @Select("SELECT COALESCE(SUM(balance), 0) FROM wallet WHERE user_id = #{userId}")
+    @Select("""
+                SELECT COALESCE(SUM(balance), 0)
+                FROM wallet
+                WHERE user_id = #{userId}
+                    AND soft_deleted = false
+            """)
     BigDecimal getTotalBalance(Long userId);
 
     @Select("""
@@ -23,6 +28,7 @@ public interface OverviewSummaryMapper {
                     AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
                     AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
                     AND user_id = #{userId}
+                    AND soft_deleted = false
             """)
     BigDecimal getThisMonthIncomeOrExpense(@Param("userId") Long userId,
                                            @Param("type") TransactionType type);
@@ -36,6 +42,7 @@ public interface OverviewSummaryMapper {
                     AND type = #{type}::transaction_type
                     AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
                     AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+                    AND soft_deleted = false
                 ORDER BY amount DESC
                 LIMIT #{limit}
             """)
@@ -47,6 +54,7 @@ public interface OverviewSummaryMapper {
                 SELECT type, title, amount
                 FROM transactions
                 WHERE user_id = #{userId}
+                    AND soft_deleted = false
                 ORDER BY created_at DESC
                 LIMIT 5
             """)

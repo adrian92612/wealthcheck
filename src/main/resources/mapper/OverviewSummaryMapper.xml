@@ -11,6 +11,7 @@
             #{id}
         </foreach>
         AND user_id = #{userId}
+        AND soft_deleted = false
     </select>
 
 </mapper>
