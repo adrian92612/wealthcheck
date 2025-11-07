@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum CacheName {
     USER_CATEGORIES("user-categories"),
     CATEGORY("category"),
+    USER_WALLETS("user-wallets"),
+    WALLET("wallet"),
     USER_TRANSACTIONS("user-transactions"),
     TRANSACTION("transaction");
 

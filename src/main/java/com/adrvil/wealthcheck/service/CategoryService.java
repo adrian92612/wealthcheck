@@ -51,6 +51,7 @@ public class CategoryService {
             throw new ResourceNotFound("Category");
         }
 
+        cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + id);
         cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
 
         log.info("Category updated successfully - ID: {}, User: {}", id, userId);
