@@ -5,6 +5,10 @@ spring:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
+  cache:
+    type: redis
+    redis:
+      cache-null-values: false
 
 server:
   servlet:
