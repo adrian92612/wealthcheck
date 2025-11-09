@@ -10,7 +10,7 @@ spring:
       host: localhost
       port: 6379
       timeout: 5000ms
-      password: "password"
+      password: ${REDIS_PASSWORD}
 
 server:
   servlet:
