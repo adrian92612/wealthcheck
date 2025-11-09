@@ -5,7 +5,9 @@ import com.adrvil.wealthcheck.converter.WalletDtoMapper;
 import com.adrvil.wealthcheck.dto.request.WalletReq;
 import com.adrvil.wealthcheck.dto.response.WalletRes;
 import com.adrvil.wealthcheck.entity.WalletEntity;
+import com.adrvil.wealthcheck.enums.CacheName;
 import com.adrvil.wealthcheck.mapper.WalletMapper;
+import com.adrvil.wealthcheck.utils.CacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ public class WalletService {
 
     private final AccountService accountService;
     private final WalletMapper walletMapper;
+    private final CacheUtil cacheUtil;
 
     public WalletRes createWallet(WalletReq walletDtoReq) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
@@ -28,6 +31,9 @@ public class WalletService {
         WalletEntity wallet = WalletDtoMapper.toEntity(userId, walletDtoReq);
         walletMapper.insert(wallet);
 
+        cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
+
         log.info("Wallet created successfully - ID: {}, User: {}, Name: {}",
                 wallet.getId(), userId, walletDtoReq.name());
 
@@ -36,6 +42,12 @@ public class WalletService {
 
     public WalletRes getWalletById(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = userId + ":" + id;
+
+        WalletRes cached = cacheUtil.get(CacheName.WALLET.getValue(), cacheKey);
+        if (cached != null) {
+            return cached;
+        }
 
         log.debug("Fetching wallet - ID: {}, User: {}", id, userId);
 
@@ -46,11 +58,21 @@ public class WalletService {
                 });
 
         log.debug("Wallet found - ID: {}, Name: {}, Balance: {}", id, wallet.getName(), wallet.getBalance());
-        return WalletDtoMapper.toDto(wallet);
+
+        WalletRes walletRes = WalletDtoMapper.toDto(wallet);
+
+        cacheUtil.put(CacheName.WALLET.getValue(), cacheKey, walletRes);
+
+        return walletRes;
     }
 
     public List<WalletRes> getAllWallets() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        List<WalletRes> cached = cacheUtil.get(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        if (cached != null) {
+            return cached;
+        }
 
         log.debug("Fetching all wallets for user: {}", userId);
 
@@ -58,9 +80,13 @@ public class WalletService {
 
         log.info("Returning {} wallets for user: {}", walletEntityList.size(), userId);
 
-        return walletEntityList.stream()
+        List<WalletRes> walletResList = walletEntityList.stream()
                 .map(WalletDtoMapper::toDto)
                 .toList();
+
+        cacheUtil.put(CacheName.USER_WALLETS.getValue(), String.valueOf(userId), walletResList);
+
+        return walletResList;
     }
 
     public WalletRes updateWallet(Long id, WalletReq walletDtoReq) {
@@ -74,6 +100,9 @@ public class WalletService {
             log.warn("Wallet update failed - ID: {}, User: {}", id, userId);
             throw new ResourceNotFound("Wallet");
         }
+
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Wallet updated successfully - ID: {}, User: {}", id, userId);
 
@@ -97,6 +126,9 @@ public class WalletService {
             log.warn("Wallet soft delete failed - ID: {}, User: {}", id, userId);
             throw new ResourceNotFound("Wallet");
         }
+
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Wallet soft deleted successfully - ID: {}, User: {}, Name: {}",
                 id, userId, wallet.getName());

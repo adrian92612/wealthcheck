@@ -9,10 +9,12 @@ import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.entity.CategoryEntity;
 import com.adrvil.wealthcheck.entity.TransactionEntity;
 import com.adrvil.wealthcheck.entity.WalletEntity;
+import com.adrvil.wealthcheck.enums.CacheName;
 import com.adrvil.wealthcheck.enums.TransactionType;
 import com.adrvil.wealthcheck.mapper.CategoryMapper;
 import com.adrvil.wealthcheck.mapper.TransactionMapper;
 import com.adrvil.wealthcheck.mapper.WalletMapper;
+import com.adrvil.wealthcheck.utils.CacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final WalletMapper walletMapper;
     private final CategoryMapper categoryMapper;
+    private final CacheUtil cacheUtil;
 
     @Transactional
     public TransactionRes createTransaction(TransactionReq req) {
@@ -49,6 +52,9 @@ public class TransactionService {
         processBalanceChange(userId, req.type(), fromWallet, toWallet, req.amount());
 
         transactionMapper.insert(transactionEntity);
+
+        cacheUtil.evictOverviewCaches(userId);
+
 
         log.info("Transaction created successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 transactionEntity.getId(), userId, req.type(), req.amount());
@@ -100,6 +106,11 @@ public class TransactionService {
             throw new ResourceNotFound("Transaction");
         }
 
+        cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + id);
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
+
+
         log.info("Transaction updated successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 id, userId, req.type(), req.amount());
         return transactionMapper.findResByIdAndUserId(existing.getId(), userId)
@@ -108,6 +119,13 @@ public class TransactionService {
 
     public TransactionRes getTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = userId + ":" + id;
+
+        TransactionRes cached = cacheUtil.get(CacheName.TRANSACTION.getValue(), cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         log.debug("Fetching transaction - ID: {}, User: {}", id, userId);
 
         TransactionRes transaction = transactionMapper.findResByIdAndUserId(id, userId)
@@ -115,6 +133,8 @@ public class TransactionService {
                     log.warn("Transaction not found - ID: {}, User: {}", id, userId);
                     return new ResourceNotFound("Transaction");
                 });
+
+        cacheUtil.put(CacheName.TRANSACTION.getValue(), cacheKey, transaction);
 
         log.debug("Transaction found - ID: {}, Type: {}, Amount: {}", id, transaction.type(), transaction.amount());
         return transaction;
@@ -161,6 +181,11 @@ public class TransactionService {
             log.warn("Transaction soft delete failed - ID: {}, User: {}", id, userId);
             throw new ResourceNotFound("Transaction");
         }
+
+        cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + id);
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
+
 
         log.info("Transaction soft deleted successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 id, userId, existingRes.type(), existingRes.amount());

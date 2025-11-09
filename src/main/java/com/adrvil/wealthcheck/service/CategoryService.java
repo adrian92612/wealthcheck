@@ -5,7 +5,9 @@ import com.adrvil.wealthcheck.converter.CategoryDtoMapper;
 import com.adrvil.wealthcheck.dto.request.CategoryReq;
 import com.adrvil.wealthcheck.dto.response.CategoryRes;
 import com.adrvil.wealthcheck.entity.CategoryEntity;
+import com.adrvil.wealthcheck.enums.CacheName;
 import com.adrvil.wealthcheck.mapper.CategoryMapper;
+import com.adrvil.wealthcheck.utils.CacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ public class CategoryService {
 
     private final AccountService accountService;
     private final CategoryMapper categoryMapper;
+    private final CacheUtil cacheUtil;
 
     public CategoryRes createCategory(CategoryReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
@@ -27,6 +30,9 @@ public class CategoryService {
 
         CategoryEntity categoryEntity = CategoryDtoMapper.toEntity(req, userId);
         categoryMapper.insertCategory(categoryEntity);
+
+        cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Category created successfully - ID: {}, User: {}, Name: {}, Type: {}",
                 categoryEntity.getId(), userId, req.name(), req.type());
@@ -46,6 +52,10 @@ public class CategoryService {
             throw new ResourceNotFound("Category");
         }
 
+        cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + id);
+        cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
+
         log.info("Category updated successfully - ID: {}, User: {}", id, userId);
 
         return CategoryDtoMapper.toDto(categoryMapper.getCategoryByIdAndUserId(id, userId)
@@ -54,6 +64,12 @@ public class CategoryService {
 
     public CategoryRes getCategory(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = userId + ":" + id;
+
+        CategoryRes cached = cacheUtil.get(CacheName.CATEGORY.getValue(), cacheKey);
+        if (cached != null) {
+            return cached;
+        }
 
         log.debug("Fetching category - ID: {}, User: {}", id, userId);
 
@@ -65,11 +81,21 @@ public class CategoryService {
 
         log.debug("Category found - ID: {}, Name: {}, Type: {}", id, category.getName(), category.getType());
 
-        return CategoryDtoMapper.toDto(category);
+        CategoryRes categoryRes = CategoryDtoMapper.toDto(category);
+
+        cacheUtil.put(CacheName.CATEGORY.getValue(), cacheKey, categoryRes);
+
+        return categoryRes;
     }
 
     public List<CategoryRes> getAllCategories() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+
+        List<CategoryRes> cachedList = cacheUtil.get(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+
+        if (cachedList != null) {
+            return cachedList;
+        }
 
         log.debug("Fetching all categories for user: {}", userId);
 
@@ -77,9 +103,13 @@ public class CategoryService {
 
         log.info("Returning {} categories for user: {}", categoryEntityList.size(), userId);
 
-        return categoryEntityList.stream()
+        List<CategoryRes> categoryResList = categoryEntityList.stream()
                 .map(CategoryDtoMapper::toDto)
                 .toList();
+
+        cacheUtil.put(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId), categoryResList);
+
+        return categoryResList;
     }
 
     public CategoryRes deleteCategory(Long id) {
@@ -98,6 +128,10 @@ public class CategoryService {
             log.warn("Category soft delete failed - ID: {}, User: {}", id, userId);
             throw new ResourceNotFound("Category");
         }
+
+        cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + id);
+        cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Category soft deleted successfully - ID: {}, User: {}, Name: {}",
                 id, userId, categoryEntity.getName());

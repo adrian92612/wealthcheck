@@ -1,8 +1,10 @@
 package com.adrvil.wealthcheck.service;
 
 import com.adrvil.wealthcheck.dto.*;
+import com.adrvil.wealthcheck.enums.CacheName;
 import com.adrvil.wealthcheck.enums.TransactionType;
 import com.adrvil.wealthcheck.mapper.OverviewSummaryMapper;
+import com.adrvil.wealthcheck.utils.CacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.util.stream.Stream;
 public class OverviewSummaryService {
     private final OverviewSummaryMapper overviewSummaryMapper;
     private final AccountService accountService;
+    private final CacheUtil cacheUtil;
 
     public CurrentOverviewDto getOverviewSummary() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
@@ -31,12 +34,16 @@ public class OverviewSummaryService {
         log.info("Overview summary for user {} - Balance: {}, Income: {}, Expense: {}, Net: {}",
                 userId, totalBalance, incomeThisMonth, expenseThisMonth, netCashFlow);
 
-        return new CurrentOverviewDto(
+        CurrentOverviewDto result = new CurrentOverviewDto(
                 totalBalance,
                 incomeThisMonth,
                 expenseThisMonth,
                 netCashFlow
         );
+
+        cacheUtil.put(CacheName.OVERVIEW.getValue(), String.valueOf(userId), result);
+
+        return result;
     }
 
     public OverviewTopTransactionsDto getTopCategories() {
@@ -91,7 +98,11 @@ public class OverviewSummaryService {
         log.info("Returning top categories for user {} - Income: {}, Expense: {}",
                 userId, topIncomeWithNames.size(), topExpenseWithNames.size());
 
-        return new OverviewTopTransactionsDto(topIncomeWithNames, topExpenseWithNames);
+        OverviewTopTransactionsDto result = new OverviewTopTransactionsDto(topIncomeWithNames, topExpenseWithNames);
+
+        cacheUtil.put(CacheName.TOP_TRANSACTIONS.getValue(), String.valueOf(userId), result);
+
+        return result;
     }
 
     public List<RecentTransactionsDto> getRecentTransactions() {
@@ -101,6 +112,9 @@ public class OverviewSummaryService {
         List<RecentTransactionsDto> recentTransactions = overviewSummaryMapper.getRecentTransactions(userId);
 
         log.info("Returning {} recent transactions for user {}", recentTransactions.size(), userId);
+
+        cacheUtil.put(CacheName.RECENT_TRANSACTIONS.getValue(), String.valueOf(userId), recentTransactions);
+
         return recentTransactions;
     }
 }
