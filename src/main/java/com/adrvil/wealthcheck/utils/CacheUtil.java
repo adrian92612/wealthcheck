@@ -1,5 +1,6 @@
 package com.adrvil.wealthcheck.utils;
 
+import com.adrvil.wealthcheck.enums.CacheName;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -40,4 +41,20 @@ public class CacheUtil {
             cache.clear();
         }
     }
+
+    public void evictOverviewCaches(Long userId) {
+        evict(CacheName.USER_TRANSACTIONS.getValue(), String.valueOf(userId));
+        evict(CacheName.OVERVIEW.getValue(), String.valueOf(userId));
+        evict(CacheName.TOP_TRANSACTIONS.getValue(), String.valueOf(userId));
+        evict(CacheName.RECENT_TRANSACTIONS.getValue(), String.valueOf(userId));
+    }
+
+    public void evictWalletCaches(Long userId, Long walletId) {
+        if (walletId != null) {
+            evict(CacheName.WALLET.getValue(), userId + ":" + walletId);
+        }
+        evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+    }
+
+
 }

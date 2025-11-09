@@ -53,7 +53,8 @@ public class TransactionService {
 
         transactionMapper.insert(transactionEntity);
 
-        cacheUtil.evict(CacheName.USER_TRANSACTIONS.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
+
 
         log.info("Transaction created successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 transactionEntity.getId(), userId, req.type(), req.amount());
@@ -106,9 +107,9 @@ public class TransactionService {
         }
 
         cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_TRANSACTIONS.getValue(), String.valueOf(userId));
-        cacheUtil.evict(CacheName.WALLET.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
+
 
         log.info("Transaction updated successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 id, userId, req.type(), req.amount());
@@ -182,9 +183,9 @@ public class TransactionService {
         }
 
         cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_TRANSACTIONS.getValue(), String.valueOf(userId));
-        cacheUtil.evict(CacheName.WALLET.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
+
 
         log.info("Transaction soft deleted successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 id, userId, existingRes.type(), existingRes.amount());

@@ -32,6 +32,7 @@ public class CategoryService {
         categoryMapper.insertCategory(categoryEntity);
 
         cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Category created successfully - ID: {}, User: {}, Name: {}, Type: {}",
                 categoryEntity.getId(), userId, req.name(), req.type());
@@ -53,6 +54,7 @@ public class CategoryService {
 
         cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + id);
         cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Category updated successfully - ID: {}, User: {}", id, userId);
 
@@ -129,6 +131,7 @@ public class CategoryService {
 
         cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + id);
         cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Category soft deleted successfully - ID: {}, User: {}, Name: {}",
                 id, userId, categoryEntity.getName());

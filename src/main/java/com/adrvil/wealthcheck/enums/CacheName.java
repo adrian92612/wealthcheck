@@ -11,7 +11,10 @@ public enum CacheName {
     USER_WALLETS("user-wallets"),
     WALLET("wallet"),
     USER_TRANSACTIONS("user-transactions"),
-    TRANSACTION("transaction");
+    TRANSACTION("transaction"),
+    RECENT_TRANSACTIONS("recent-transactions"),
+    TOP_TRANSACTIONS("top-transactions"),
+    OVERVIEW("overview");
 
     private final String value;
 }

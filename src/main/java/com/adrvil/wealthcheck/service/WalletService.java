@@ -32,6 +32,7 @@ public class WalletService {
         walletMapper.insert(wallet);
 
         cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Wallet created successfully - ID: {}, User: {}, Name: {}",
                 wallet.getId(), userId, walletDtoReq.name());
@@ -100,8 +101,8 @@ public class WalletService {
             throw new ResourceNotFound("Wallet");
         }
 
-        cacheUtil.evict(CacheName.WALLET.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Wallet updated successfully - ID: {}, User: {}", id, userId);
 
@@ -126,8 +127,8 @@ public class WalletService {
             throw new ResourceNotFound("Wallet");
         }
 
-        cacheUtil.evict(CacheName.WALLET.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
+        cacheUtil.evictWalletCaches(userId, id);
+        cacheUtil.evictOverviewCaches(userId);
 
         log.info("Wallet soft deleted successfully - ID: {}, User: {}, Name: {}",
                 id, userId, wallet.getName());
