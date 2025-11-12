@@ -54,9 +54,12 @@ public class TransactionService {
         transactionMapper.insert(transactionEntity);
 
         cacheUtil.evictOverviewCaches(userId);
-        cacheUtil.evictWalletCaches(userId, fromWallet.getId());
-        cacheUtil.evictWalletCaches(userId, toWallet.getId());
-
+        if (fromWallet != null) {
+            cacheUtil.evictWalletCaches(userId, fromWallet.getId());
+        }
+        if (toWallet != null) {
+            cacheUtil.evictWalletCaches(userId, toWallet.getId());
+        }
 
         log.info("Transaction created successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 transactionEntity.getId(), userId, req.type(), req.amount());
