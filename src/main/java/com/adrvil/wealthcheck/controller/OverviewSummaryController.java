@@ -3,7 +3,7 @@ package com.adrvil.wealthcheck.controller;
 import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
 import com.adrvil.wealthcheck.dto.CurrentOverviewDto;
 import com.adrvil.wealthcheck.dto.OverviewTopTransactionsDto;
-import com.adrvil.wealthcheck.dto.RecentTransactionsDto;
+import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.service.OverviewSummaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,7 +31,7 @@ public class OverviewSummaryController {
     }
 
     @GetMapping("/recent-transactions")
-    public ApiResponseEntity<List<RecentTransactionsDto>> getRecentTransactions() {
+    public ApiResponseEntity<List<TransactionRes>> getRecentTransactionsNew() {
         return ApiResponseEntity.success(HttpStatus.OK, "Recent Transactions", overviewSummaryService.getRecentTransactions());
     }
 }
