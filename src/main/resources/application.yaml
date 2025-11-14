@@ -2,6 +2,7 @@ spring:
   application:
     name: wealthcheck
   datasource:
+    driver-class-name: org.postgresql.Driver
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
@@ -9,6 +10,12 @@ spring:
     type: redis
     redis:
       cache-null-values: false
+  jackson:
+    time-zone: Asia/Manila
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %level %logger{36} - %msg%n"
 
 server:
   servlet:

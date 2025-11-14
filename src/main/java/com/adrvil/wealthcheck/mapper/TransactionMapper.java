@@ -3,6 +3,7 @@ package com.adrvil.wealthcheck.mapper;
 import com.adrvil.wealthcheck.dto.TransactionFilterDto;
 import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.entity.TransactionEntity;
+import com.adrvil.wealthcheck.enums.TransactionType;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -97,4 +98,58 @@ public interface TransactionMapper {
     List<TransactionRes> findTransactions(@Param("userId") Long userId,
                                           @Param("filter") TransactionFilterDto filter);
 
+    @Select("""
+            SELECT
+                t.id,
+                t.from_wallet_id AS fromWalletId,
+                t.to_wallet_id AS toWalletId,
+                t.category_id AS categoryId,
+                fw.name AS fromWalletName,
+                tw.name AS toWalletName,
+                c.name AS categoryName,
+                c.icon AS categoryIcon,
+                t.title,
+                t.notes,
+                t.amount,
+                t.type,
+                t.created_at AS createdAt,
+                t.updated_at AS updatedAt
+                FROM transactions t
+                LEFT JOIN wallet fw ON t.from_wallet_id = fw.id AND fw.user_id = #{userId}
+                LEFT JOIN wallet tw ON t.to_wallet_id = tw.id AND tw.user_id = #{userId}
+                LEFT JOIN category c ON t.category_id = c.id AND c.user_id = #{userId}
+                WHERE t.user_id = #{userId}
+                AND t.soft_deleted = FALSE
+                ORDER BY t.created_at DESC
+                LIMIT 5
+            """)
+    List<TransactionRes> getRecentTransactions(Long userId);
+
+    @Select("""
+            SELECT
+                t.id,
+                t.from_wallet_id AS fromWalletId,
+                t.to_wallet_id AS toWalletId,
+                t.category_id AS categoryId,
+                fw.name AS fromWalletName,
+                tw.name AS toWalletName,
+                c.name AS categoryName,
+                c.icon AS categoryIcon,
+                t.title,
+                t.notes,
+                t.amount,
+                t.type,
+                t.created_at AS createdAt,
+                t.updated_at AS updatedAt
+                FROM transactions t
+                LEFT JOIN wallet fw ON t.from_wallet_id = fw.id AND fw.user_id = #{userId}
+                LEFT JOIN wallet tw ON t.to_wallet_id = tw.id AND tw.user_id = #{userId}
+                LEFT JOIN category c ON t.category_id = c.id AND c.user_id = #{userId}
+                WHERE t.user_id = #{userId}
+                AND t.type = #{txnType}::transaction_type
+                AND t.soft_deleted = FALSE
+                ORDER BY t.amount DESC
+                LIMIT #{limit}
+            """)
+    List<TransactionRes> getTopTransactions(Long userId, TransactionType txnType, int limit);
 }
