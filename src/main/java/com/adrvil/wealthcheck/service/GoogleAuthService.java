@@ -28,6 +28,7 @@ public class GoogleAuthService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final AccountMapper accountMapper;
     private final AccountService accountService;
+    private final CategoryService categoryService;
 
     @Value("${google.oauth2.client-id}")
     private String googleClientId;
@@ -64,6 +65,7 @@ public class GoogleAuthService {
         AccountEntity account = accountMapper.findByEmail(googleUser.email());
         if (account == null) {
             account = accountService.createAccount(googleUser);
+            categoryService.createDefaultCategories(account.getId());
         }
 
         // Generate JWT token with user info

@@ -6,6 +6,7 @@ import com.adrvil.wealthcheck.dto.request.CategoryReq;
 import com.adrvil.wealthcheck.dto.response.CategoryRes;
 import com.adrvil.wealthcheck.entity.CategoryEntity;
 import com.adrvil.wealthcheck.enums.CacheName;
+import com.adrvil.wealthcheck.enums.CategoryType;
 import com.adrvil.wealthcheck.mapper.CategoryMapper;
 import com.adrvil.wealthcheck.utils.CacheUtil;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -23,8 +25,8 @@ public class CategoryService {
     private final CategoryMapper categoryMapper;
     private final CacheUtil cacheUtil;
 
-    public CategoryRes createCategory(CategoryReq req) {
-        Long userId = accountService.getCurrentAccountIdOrThrow();
+    public CategoryRes createCategory(CategoryReq req, Long id) {
+        Long userId = Optional.ofNullable(id).orElseGet(accountService::getCurrentAccountIdOrThrow);
 
         log.debug("Creating category for user: {}, name: {}, type: {}", userId, req.name(), req.type());
 
@@ -138,4 +140,30 @@ public class CategoryService {
 
         return CategoryDtoMapper.toDto(categoryEntity);
     }
+
+    public void createDefaultCategories(Long userId) {
+        List<CategoryReq> defaultCategories = List.of(
+                new CategoryReq("Food", null, CategoryType.EXPENSE, "food"),
+                new CategoryReq("Utilities", null, CategoryType.EXPENSE, "plug"),
+                new CategoryReq("Other Expenses", null, CategoryType.EXPENSE, "shoppingBag"),
+                new CategoryReq("Salary", null, CategoryType.INCOME, "wallet"),
+                new CategoryReq("Other Incomes", null, CategoryType.INCOME, "coins")
+        );
+
+        log.info("Creating {} default categories for user ID: {}", defaultCategories.size(), userId);
+
+        defaultCategories.forEach(req -> {
+            try {
+                CategoryRes category = createCategory(req, userId);
+                log.info("Default category created: {} (ID: {}, Type: {}) for user {}",
+                        category.name(), category.id(), category.type(), userId);
+            } catch (Exception e) {
+                log.error("Failed to create default category '{}' for user {}: {}",
+                        req.name(), userId, e.getMessage(), e);
+            }
+        });
+
+        log.info("Finished creating default categories for user ID: {}", userId);
+    }
+
 }

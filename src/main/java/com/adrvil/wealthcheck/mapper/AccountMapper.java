@@ -2,6 +2,7 @@ package com.adrvil.wealthcheck.mapper;
 
 import com.adrvil.wealthcheck.entity.AccountEntity;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 
 public interface AccountMapper {
@@ -24,6 +25,7 @@ public interface AccountMapper {
                     #{createdAt},
                     #{updatedAt})
             """)
+    @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(AccountEntity account);
 
     @Select("SELECT * FROM account WHERE email = #{email}")
