@@ -20,7 +20,7 @@ public class CategoryController {
 
     @PostMapping()
     public ApiResponseEntity<CategoryRes> createCategory(@Valid @RequestBody CategoryReq req) {
-        return ApiResponseEntity.success(HttpStatus.CREATED, "Category created", categoryService.createCategory(req));
+        return ApiResponseEntity.success(HttpStatus.CREATED, "Category created", categoryService.createCategory(req, null));
     }
 
     @PutMapping("/{id}")
