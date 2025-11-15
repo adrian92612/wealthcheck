@@ -14,4 +14,5 @@ public class AccountEntity extends BaseEntity {
     private String providerId;
     private String avatarUrl;
     private boolean isActive;
+    private boolean isNewUser;
 }

@@ -69,4 +69,15 @@ public class AccountService {
         return userId;
     }
 
+    public void finishOnboarding(Long userId) {
+        AccountEntity account = accountMapper.findById(userId);
+
+        if (account == null) {
+            log.warn("User with id not found: {}", userId);
+            throw new ResourceNotFound("Account");
+        }
+
+        accountMapper.setIsNewUser(userId, false);
+    }
+
 }

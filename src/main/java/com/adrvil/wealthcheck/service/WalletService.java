@@ -30,6 +30,7 @@ public class WalletService {
 
         WalletEntity wallet = WalletDtoMapper.toEntity(userId, walletDtoReq);
         walletMapper.insert(wallet);
+        accountService.finishOnboarding(userId);
 
         cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
         cacheUtil.evictOverviewCaches(userId);
