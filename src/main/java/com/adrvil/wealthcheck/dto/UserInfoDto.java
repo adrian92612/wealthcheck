@@ -3,6 +3,7 @@ package com.adrvil.wealthcheck.dto;
 public record UserInfoDto(
         String email,
         String name,
-        String avatarUrl
+        String avatarUrl,
+        boolean isNewUser
 ) {
 }

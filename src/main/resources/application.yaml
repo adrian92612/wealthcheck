@@ -12,6 +12,9 @@ spring:
       cache-null-values: false
   jackson:
     time-zone: Asia/Manila
+  profiles:
+#    active: local
+    active: prod
 
 logging:
   pattern:
