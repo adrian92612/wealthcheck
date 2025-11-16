@@ -14,7 +14,10 @@ public enum CacheName {
     TRANSACTION("transaction"),
     RECENT_TRANSACTIONS("recent-transactions"),
     TOP_TRANSACTIONS("top-transactions"),
-    OVERVIEW("overview");
-
+    OVERVIEW("overview"),
+    DELETED_USER_CATEGORIES("deleted-user-categories"),
+    DELETED_USER_WALLETS("deleted-user-wallets"),
+    DELETED_USER_TRANSACTIONS("deleted-user-transactions"),
+    ;
     private final String value;
 }

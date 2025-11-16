@@ -9,7 +9,7 @@
         SELECT COUNT(*)
         FROM transactions
         WHERE user_id = #{userId}
-        AND soft_deleted = FALSE
+        AND soft_deleted = #{softDeleted}
 
         <!-- type filter -->
         <if test="filter.type != null">
@@ -76,11 +76,20 @@
         t.created_at AS createdAt,
         t.updated_at AS updatedAt
         FROM transactions t
-        LEFT JOIN wallet fw ON t.from_wallet_id = fw.id AND fw.user_id = #{userId}
-        LEFT JOIN wallet tw ON t.to_wallet_id = tw.id AND tw.user_id = #{userId}
-        LEFT JOIN category c ON t.category_id = c.id AND c.user_id = #{userId}
+        LEFT JOIN wallet fw
+        ON t.from_wallet_id = fw.id
+        AND fw.user_id = #{userId}
+        AND fw.soft_deleted = FALSE
+        LEFT JOIN wallet tw
+        ON t.to_wallet_id = tw.id
+        AND tw.user_id = #{userId}
+        AND tw.soft_deleted = FALSE
+        LEFT JOIN category c
+        ON t.category_id = c.id
+        AND c.user_id = #{userId}
+        AND c.soft_deleted = FALSE
         WHERE t.user_id = #{userId}
-        AND t.soft_deleted = FALSE
+        AND t.soft_deleted = #{softDeleted}
 
         <!-- type filter -->
         <if test="filter.type != null">
@@ -135,6 +144,5 @@
             LIMIT #{filter.size} OFFSET ${(filter.page - 1) * filter.size}
         </if>
     </select>
-
 
 </mapper>

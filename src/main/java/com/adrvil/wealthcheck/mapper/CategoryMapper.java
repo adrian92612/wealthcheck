@@ -2,10 +2,7 @@ package com.adrvil.wealthcheck.mapper;
 
 import com.adrvil.wealthcheck.dto.request.CategoryReq;
 import com.adrvil.wealthcheck.entity.CategoryEntity;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Options;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -61,10 +58,10 @@ public interface CategoryMapper {
                     created_at,
                     updated_at
                 FROM category
-                WHERE user_id = #{userId} AND soft_deleted = FALSE
+                WHERE user_id = #{userId} AND soft_deleted = #{softDeleted}
                 ORDER BY created_at DESC
             """)
-    List<CategoryEntity> getAllCategoryByUserId(Long userId);
+    List<CategoryEntity> getAllCategoryByUserId(Long userId, boolean softDeleted);
 
     @Update("""
                 UPDATE category
@@ -86,4 +83,32 @@ public interface CategoryMapper {
                 WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int softDeleteCategory(Long id, Long userId);
+
+    @Update("""
+                UPDATE category
+                SET
+                    soft_deleted = FALSE,
+                    updated_at = NOW()
+                WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = TRUE
+            """)
+    int restoreCategory(Long id, Long userId);
+
+    @Select("SELECT soft_deleted FROM category WHERE user_id = #{userId} AND id = #{id}")
+    Boolean isSoftDeleted(@Param("userId") Long userId, @Param("id") Long id);
+
+    @Delete("""
+            DELETE FROM category
+            WHERE user_id = #{userId}
+                AND id = #{id}
+                AND soft_deleted = true
+            """)
+    int permanentDeleteCategory(Long userId, Long id);
+
+    @Select("""
+            SELECT id FROM category
+            WHERE user_id = #{userId}
+                AND name = #{name}
+                AND soft_deleted = FALSE
+            """)
+    Long getCategoryIdByName(Long userId, String name);
 }

@@ -41,8 +41,6 @@ public class TransactionService {
         validateCategoryType(userId, req.categoryId(), req.type());
 
         TransactionEntity transactionEntity = TransactionDtoMapper.toEntity(userId, req);
-
-
         WalletEntity fromWallet = fetchWallet(req.fromWalletId(), userId);
         WalletEntity toWallet = fetchWallet(req.toWalletId(), userId);
 
@@ -50,20 +48,12 @@ public class TransactionService {
                 req.type(), req.fromWalletId(), req.toWalletId(), req.amount());
 
         processBalanceChange(userId, req.type(), fromWallet, toWallet, req.amount());
-
         transactionMapper.insert(transactionEntity);
 
-        cacheUtil.evictOverviewCaches(userId);
-        if (fromWallet != null) {
-            cacheUtil.evictWalletCaches(userId, fromWallet.getId());
-        }
-        if (toWallet != null) {
-            cacheUtil.evictWalletCaches(userId, toWallet.getId());
-        }
-
+        evictTransactionCaches(userId, transactionEntity.getId(), fromWallet, toWallet);
         log.info("Transaction created successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 transactionEntity.getId(), userId, req.type(), req.amount());
-        return transactionMapper.findResByIdAndUserId(transactionEntity.getId(), userId)
+        return transactionMapper.findResByIdAndUserId(transactionEntity.getId(), userId, false)
                 .orElseThrow(() -> new ResourceNotFound("Transaction"));
     }
 
@@ -77,7 +67,7 @@ public class TransactionService {
         validateTransactionReq(req);
         validateCategoryType(userId, req.categoryId(), req.type());
 
-        TransactionEntity existing = transactionMapper.findByIdAndUserId(id, userId)
+        TransactionEntity existing = transactionMapper.findByIdAndUserId(id, userId, false)
                 .orElseThrow(() -> new ResourceNotFound("Transaction"));
 
         log.debug("Found existing transaction - Type: {}, Amount: {}, From: {}, To: {}",
@@ -111,35 +101,24 @@ public class TransactionService {
             throw new ResourceNotFound("Transaction");
         }
 
-        cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + id);
-        cacheUtil.evictWalletCaches(userId, id);
-        cacheUtil.evictOverviewCaches(userId);
+        evictTransactionCaches(userId, id, newFrom, newTo);
 
 
         log.info("Transaction updated successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 id, userId, req.type(), req.amount());
-        return transactionMapper.findResByIdAndUserId(existing.getId(), userId)
-                .orElseThrow(() -> new ResourceNotFound("Transaction"));
+        return getTransaction(id);
     }
 
     public TransactionRes getTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        String cacheKey = userId + ":" + id;
-
-        TransactionRes cached = cacheUtil.get(CacheName.TRANSACTION.getValue(), cacheKey);
-        if (cached != null) {
-            return cached;
-        }
 
         log.debug("Fetching transaction - ID: {}, User: {}", id, userId);
 
-        TransactionRes transaction = transactionMapper.findResByIdAndUserId(id, userId)
+        TransactionRes transaction = transactionMapper.findResByIdAndUserId(id, userId, false)
                 .orElseThrow(() -> {
                     log.warn("Transaction not found - ID: {}, User: {}", id, userId);
                     return new ResourceNotFound("Transaction");
                 });
-
-        cacheUtil.put(CacheName.TRANSACTION.getValue(), cacheKey, transaction);
 
         log.debug("Transaction found - ID: {}, Type: {}, Amount: {}", id, transaction.type(), transaction.amount());
         return transaction;
@@ -147,50 +126,59 @@ public class TransactionService {
 
     public TransactionFilterRes getAllTransactions(TransactionFilterDto filter) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-
+        boolean softDeleted = false;
         log.debug("Fetching all transactions for user: {}, filters: {}", userId, filter);
+        return getTransactionList(userId, filter, softDeleted);
+    }
 
-        long transactionCount = transactionMapper.countTransactions(userId, filter);
-        List<TransactionRes> transactionResList = transactionMapper.findTransactions(userId, filter);
-
-        log.info("Returning {} transactions for user: {} with filters: {}",
-                transactionCount, userId, filter);
-
-        return TransactionFilterRes.of(transactionResList, filter, transactionCount);
+    public TransactionFilterRes getAllSoftDeletedTransactions(TransactionFilterDto filter) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        boolean softDeleted = true;
+        log.debug("Fetching all soft deleted transactions for user: {}, filters: {}", userId, filter);
+        return getTransactionList(userId, filter, softDeleted);
     }
 
     @Transactional
     public TransactionRes deleteTransaction(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-
         log.debug("Soft deleting transaction - ID: {}, User: {}", id, userId);
 
-        TransactionRes existingRes = transactionMapper.findResByIdAndUserId(id, userId)
-                .orElseThrow(() -> {
-                    log.warn("Transaction not found for deletion - ID: {}, User: {}", id, userId);
-                    return new ResourceNotFound("Transaction");
-                });
+        TransactionRes existingRes = getTransaction(id);
 
-        log.debug("Found transaction to delete - Type: {}, Amount: {}, From: {}, To: {}",
-                existingRes.type(), existingRes.amount(), existingRes.fromWalletId(), existingRes.toWalletId());
+        Long fromId = existingRes.fromWalletId();
+        Long toId = existingRes.toWalletId();
 
-        WalletEntity oldFrom = fetchWallet(existingRes.fromWalletId(), userId);
-        WalletEntity oldTo = fetchWallet(existingRes.toWalletId(), userId);
+        WalletEntity oldFrom = null;
+        WalletEntity oldTo = null;
+
+        if (fromId != null) {
+            oldFrom = walletMapper.findByIdAndUserId(fromId, userId).orElse(null);
+        }
+        if (toId != null) {
+            oldTo = walletMapper.findByIdAndUserId(toId, userId).orElse(null);
+        }
 
         log.debug("Reverting balance for deletion - Type: {}, Amount: {}", existingRes.type(), existingRes.amount());
 
-        processBalanceRevert(userId, existingRes.type(), oldFrom, oldTo, existingRes.amount());
+        switch (existingRes.type()) {
+            case EXPENSE:
+                if (oldFrom != null) increaseBalance(userId, oldFrom, existingRes.amount());
+                break;
+            case INCOME:
+                if (oldTo != null) decreaseBalance(userId, oldTo, existingRes.amount());
+                break;
+            case TRANSFER:
+                if (oldFrom != null) increaseBalance(userId, oldFrom, existingRes.amount());
+                if (oldTo != null) decreaseBalance(userId, oldTo, existingRes.amount());
+                break;
+        }
 
-        int deleted = transactionMapper.softDelete(userId, id);
-        if (deleted == 0) {
+        if (transactionMapper.softDelete(userId, id) == 0) {
             log.warn("Transaction soft delete failed - ID: {}, User: {}", id, userId);
             throw new ResourceNotFound("Transaction");
         }
 
-        cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + id);
-        cacheUtil.evictWalletCaches(userId, id);
-        cacheUtil.evictOverviewCaches(userId);
-
+        evictTransactionCaches(userId, id, oldFrom, oldTo);
 
         log.info("Transaction soft deleted successfully - ID: {}, User: {}, Type: {}, Amount: {}",
                 id, userId, existingRes.type(), existingRes.amount());
@@ -198,8 +186,111 @@ public class TransactionService {
         return existingRes;
     }
 
+    @Transactional
+    public TransactionRes restoreTransaction(Long id) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug("Restoring soft-deleted transaction - ID: {}, User: {}", id, userId);
+
+        TransactionRes existingRes = transactionMapper.findResByIdAndUserId(id, userId, true)
+                .orElseThrow(() -> new ResourceNotFound("Transaction"));
+
+        Boolean isSoftDeleted = transactionMapper.isSoftDeleted(userId, id);
+
+        if (isSoftDeleted == null) {
+            log.warn("Transaction not found for restoration - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Transaction");
+        }
+        if (!isSoftDeleted) {
+            log.warn("Restore rejected - Transaction is NOT soft deleted. ID: {}, User: {}", id, userId);
+            throw new IllegalStateException("Transaction is not soft deleted");
+        }
+
+        Long fromId = existingRes.fromWalletId();
+        Long toId = existingRes.toWalletId();
+
+        WalletEntity oldFrom = null;
+        WalletEntity oldTo = null;
+
+        if (fromId != null) {
+            oldFrom = walletMapper.findByIdAndUserId(fromId, userId).orElse(null);
+        }
+        if (toId != null) {
+            oldTo = walletMapper.findByIdAndUserId(toId, userId).orElse(null);
+        }
+
+        log.debug("Applying original balance changes for restoration - Type: {}, Amount: {}", existingRes.type(), existingRes.amount());
+
+        switch (existingRes.type()) {
+            case EXPENSE:
+                if (oldFrom != null) decreaseBalance(userId, oldFrom, existingRes.amount());
+                break;
+            case INCOME:
+                if (oldTo != null) increaseBalance(userId, oldTo, existingRes.amount());
+                break;
+            case TRANSFER:
+                if (oldFrom != null) decreaseBalance(userId, oldFrom, existingRes.amount());
+                if (oldTo != null) increaseBalance(userId, oldTo, existingRes.amount());
+                break;
+        }
+
+        if (transactionMapper.restoreTransaction(userId, id) == 0) {
+            throw new ResourceNotFound("Transaction");
+        }
+
+        evictTransactionCaches(userId, id, oldFrom, oldTo);
+        log.info("Transaction restored successfully - ID: {}, User: {}, Type: {}, Amount: {}",
+                id, userId, existingRes.type(), existingRes.amount());
+        return existingRes;
+    }
+
+    @Transactional
+    public void permanentDeleteTransaction(Long id) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug("Permanently deleting transaction - ID: {}, User: {}", id, userId);
+
+        Boolean isSoftDeleted = transactionMapper.isSoftDeleted(userId, id);
+
+        if (isSoftDeleted == null) {
+            log.warn("Transaction not found for permanent delete - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Transaction");
+        }
+        if (!isSoftDeleted) {
+            log.warn("Permanent delete rejected - Transaction is NOT soft deleted. ID: {}, User: {}", id, userId);
+            throw new IllegalStateException("Transaction is not soft deleted");
+        }
+
+        if (transactionMapper.permanentDeleteTransaction(userId, id) == 0) {
+            log.error("Permanent delete FAILED - No rows affected. Possible concurrent operation. ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Transaction");
+        }
+
+        evictTransactionCaches(userId, id, null, null);
+        log.info("Transaction permanently deleted - ID: {}, User: {}", id, userId);
+    }
+
 
     // --- helper methods ---
+
+    private void evictTransactionCaches(Long userId, Long transactionId, WalletEntity fromWallet, WalletEntity toWallet) {
+        cacheUtil.evict(CacheName.TRANSACTION.getValue(), userId + ":" + transactionId);
+        cacheUtil.evictOverviewCaches(userId);
+
+        if (fromWallet != null) cacheUtil.evictWalletCaches(userId, fromWallet.getId());
+        if (toWallet != null) cacheUtil.evictWalletCaches(userId, toWallet.getId());
+    }
+
+    private TransactionFilterRes getTransactionList(Long userId,
+                                                    TransactionFilterDto filter,
+                                                    boolean softDeleted) {
+
+        long transactionCount = transactionMapper.countTransactions(userId, filter, softDeleted);
+        List<TransactionRes> transactionResList = transactionMapper.findTransactions(userId, filter, softDeleted);
+
+        log.info("Returning {} transactions for user: {} with filters: {}",
+                transactionCount, userId, filter);
+
+        return TransactionFilterRes.of(transactionResList, filter, transactionCount);
+    }
 
     private WalletEntity fetchWallet(Long walletId, Long userId) {
         if (walletId == null || userId == null) return null;

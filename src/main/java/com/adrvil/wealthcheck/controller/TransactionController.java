@@ -23,6 +23,11 @@ public class TransactionController {
         return ApiResponseEntity.success(HttpStatus.OK, "Transaction List", transactionService.getAllTransactions(filter));
     }
 
+    @GetMapping("/deleted")
+    public ApiResponseEntity<TransactionFilterRes> getAllSoftDeletedTransactions(TransactionFilterDto filter) {
+        return ApiResponseEntity.success(HttpStatus.OK, "Transaction List", transactionService.getAllSoftDeletedTransactions(filter));
+    }
+
     @GetMapping("/{id}")
     public ApiResponseEntity<TransactionRes> getTransactionById(@PathVariable Long id) {
         return ApiResponseEntity.success(HttpStatus.OK, "Transaction found", transactionService.getTransaction(id));
@@ -39,8 +44,24 @@ public class TransactionController {
         return ApiResponseEntity.success(HttpStatus.OK, "Transaction updated", transactionService.updateTransaction(id, req));
     }
 
+    @PutMapping("/restore/{id}")
+    public ApiResponseEntity<TransactionRes> restoreTransaction(@PathVariable Long id) {
+        return ApiResponseEntity.success(HttpStatus.OK, "Transaction updated", transactionService.restoreTransaction(id));
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponseEntity<TransactionRes> deleteTransaction(@PathVariable Long id) {
         return ApiResponseEntity.success(HttpStatus.OK, "Transaction deleted", transactionService.deleteTransaction(id));
     }
+
+    @DeleteMapping("/permanent-delete/{id}")
+    public ApiResponseEntity<Void> permanentDeleteTransaction(@PathVariable Long id) {
+        transactionService.permanentDeleteTransaction(id);
+        return ApiResponseEntity.success(HttpStatus.OK, "Transaction permanently deleted", null );
+    }
+
+
+
+
+
 }

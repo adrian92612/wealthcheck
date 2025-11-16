@@ -22,6 +22,11 @@ public class WalletController {
         return ApiResponseEntity.success(HttpStatus.OK, "Wallet list found", walletService.getAllWallets());
     }
 
+    @PostMapping()
+    public ApiResponseEntity<WalletRes> createWallet(@Valid @RequestBody WalletReq walletReq) {
+        return ApiResponseEntity.success(HttpStatus.CREATED, "Wallet created", walletService.createWallet(walletReq));
+    }
+
     @GetMapping("/{id}")
     public ApiResponseEntity<WalletRes> getWalletById(@PathVariable Long id) {
         return ApiResponseEntity.success(HttpStatus.OK, "Wallet found", walletService.getWalletById(id));
@@ -38,8 +43,19 @@ public class WalletController {
         return ApiResponseEntity.success(HttpStatus.OK, "Wallet deleted", walletService.softDelete(id));
     }
 
-    @PostMapping()
-    public ApiResponseEntity<WalletRes> createWallet(@Valid @RequestBody WalletReq walletReq) {
-        return ApiResponseEntity.success(HttpStatus.CREATED, "Wallet created", walletService.createWallet(walletReq));
+    @GetMapping("/deleted")
+    public ApiResponseEntity<List<WalletRes>> getAllSoftDeletedWallets() {
+        return ApiResponseEntity.success(HttpStatus.OK, "Deleted Wallet list", walletService.getAllSoftDeletedWallets());
+    }
+
+    @PutMapping("/restore/{id}")
+    public ApiResponseEntity<WalletRes> restoreWallet(@PathVariable Long id) {
+        return ApiResponseEntity.success(HttpStatus.OK, "Wallet restored", walletService.restoreWallet(id));
+    }
+
+    @DeleteMapping("/permanent-delete/{id}")
+    public ApiResponseEntity<Void> deletePermanentCategory(@PathVariable Long id) {
+        walletService.permanentDeleteWallet(id);
+        return ApiResponseEntity.success(HttpStatus.OK, "Wallet permanently deleted", null);
     }
 }
