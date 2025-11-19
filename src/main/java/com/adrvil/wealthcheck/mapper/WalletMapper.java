@@ -36,10 +36,10 @@ public interface WalletMapper {
                     created_at,
                     updated_at
                 FROM wallet
-                WHERE user_id = #{userId} AND soft_deleted = FALSE
+                WHERE user_id = #{userId} AND soft_deleted = #{softDeleted}
                 ORDER BY created_at DESC
             """)
-    List<WalletEntity> findByUserId(Long userId);
+    List<WalletEntity> findByUserId(Long userId, boolean softDeleted);
 
     @Select("""
                 SELECT
@@ -60,6 +60,14 @@ public interface WalletMapper {
                 WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
     int updateWallet(Long id, Long userId, WalletReq req);
+
+    @Update("""
+                UPDATE wallet
+                SET balance = #{balance}, updated_at = NOW()
+                WHERE id = #{walletId} AND user_id = #{userId} AND soft_deleted = FALSE
+            """)
+    void updateBalance(Long walletId, Long userId, BigDecimal balance);
+
 
     @Update("""
                 UPDATE wallet
@@ -87,4 +95,23 @@ public interface WalletMapper {
             """)
     int softDelete(Long id, Long userId);
 
+    @Update("""
+                UPDATE wallet
+                SET
+                    soft_deleted = FALSE,
+                    updated_at = NOW()
+                WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = TRUE
+            """)
+    int restoreWallet(Long id, Long userId);
+
+    @Select("SELECT soft_deleted FROM wallet WHERE user_id = #{userId} AND id = #{id}")
+    Boolean isSoftDeleted(@Param("userId") Long userId, @Param("id") Long id);
+
+    @Delete("""
+            DELETE FROM wallet
+            WHERE user_id = #{userId}
+                AND id = #{id}
+                AND soft_deleted = true
+            """)
+    int permanentDeleteWallet(Long userId, Long id);
 }

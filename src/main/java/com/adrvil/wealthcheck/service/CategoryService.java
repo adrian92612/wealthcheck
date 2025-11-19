@@ -64,6 +64,33 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFound("Category")));
     }
 
+    public CategoryRes restoreCategory(Long id) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug("Restoring category - ID: {}, User: {}", id, userId);
+
+        Boolean isSoftDeleted = categoryMapper.isSoftDeleted(userId, id);
+        if (isSoftDeleted == null) {
+            log.warn("Category not found for restoration - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Category");
+        }
+
+        if (!isSoftDeleted) {
+            log.warn("Restore rejected - Category is NOT soft deleted. ID: {}, User: {}", id, userId);
+            throw new IllegalStateException("Category is not soft deleted");
+        }
+
+        if (categoryMapper.restoreCategory(id, userId) == 0) {
+            log.warn("Category restore failed - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Category");
+        }
+
+        evictCategoryCaches(userId, id);
+
+        log.info("Category restored successfully - ID: {}, User: {}", id, userId);
+        return CategoryDtoMapper.toDto(categoryMapper.getCategoryByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFound("Category")));
+    }
+
     public CategoryRes getCategory(Long id) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
         String cacheKey = userId + ":" + id;
@@ -95,13 +122,11 @@ public class CategoryService {
 
         List<CategoryRes> cachedList = cacheUtil.get(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
 
-        if (cachedList != null) {
-            return cachedList;
-        }
+        if (cachedList != null) return cachedList;
 
         log.debug("Fetching all categories for user: {}", userId);
 
-        List<CategoryEntity> categoryEntityList = categoryMapper.getAllCategoryByUserId(userId);
+        List<CategoryEntity> categoryEntityList = categoryMapper.getAllCategoryByUserId(userId, false);
 
         log.info("Returning {} categories for user: {}", categoryEntityList.size(), userId);
 
@@ -110,6 +135,26 @@ public class CategoryService {
                 .toList();
 
         cacheUtil.put(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId), categoryResList);
+
+        return categoryResList;
+    }
+
+    public List<CategoryRes> getAllSoftDeletedCategories() {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        List<CategoryRes> cachedList = cacheUtil.get(CacheName.DELETED_USER_CATEGORIES.getValue(), String.valueOf(userId));
+
+        if (cachedList != null) return cachedList;
+
+        log.debug("Fetching all soft deleted categories for user: {}", userId);
+        List<CategoryEntity> categoryEntityList = categoryMapper.getAllCategoryByUserId(userId, true);
+
+        log.info("Returning {} soft deleted categories for user: {}", categoryEntityList.size(), userId);
+
+        List<CategoryRes> categoryResList = categoryEntityList.stream()
+                .map(CategoryDtoMapper::toDto)
+                .toList();
+
+        cacheUtil.put(CacheName.DELETED_USER_CATEGORIES.getValue(), String.valueOf(userId), categoryResList);
 
         return categoryResList;
     }
@@ -131,9 +176,7 @@ public class CategoryService {
             throw new ResourceNotFound("Category");
         }
 
-        cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + id);
-        cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
-        cacheUtil.evictOverviewCaches(userId);
+        evictCategoryCaches(userId, id);
 
         log.info("Category soft deleted successfully - ID: {}, User: {}, Name: {}",
                 id, userId, categoryEntity.getName());
@@ -141,11 +184,48 @@ public class CategoryService {
         return CategoryDtoMapper.toDto(categoryEntity);
     }
 
+    public void permanentDeleteCategory(Long id) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug(
+                "Permanently deleting category - ID: {}, User: {}",
+                id, userId
+        );
+
+        Boolean isSoftDeleted = categoryMapper.isSoftDeleted(userId, id);
+
+        if (isSoftDeleted == null) {
+            log.warn("Category not found for permanent delete - ID: {}, User: {}", id, userId);
+            throw new ResourceNotFound("Category");
+        }
+
+        if (!isSoftDeleted) {
+            log.warn("Permanent delete rejected - Category is NOT soft deleted. ID: {}, User: {}", id, userId);
+            throw new IllegalStateException("Category is not soft deleted");
+        }
+
+        int deleted = categoryMapper.permanentDeleteCategory(userId, id);
+        if (deleted == 0) {
+            log.error(
+                    "Permanent delete FAILED - No rows affected. Possible concurrent operation. ID: {}, User: {}",
+                    id, userId
+            );
+            throw new ResourceNotFound("Category");
+        }
+
+        evictCategoryCaches(userId, id);
+
+        log.info(
+                "Transaction permanently deleted - ID: {}, User: {}",
+                id, userId
+        );
+    }
+
     public void createDefaultCategories(Long userId) {
         List<CategoryReq> defaultCategories = List.of(
                 new CategoryReq("Food", null, CategoryType.EXPENSE, "food"),
                 new CategoryReq("Utilities", null, CategoryType.EXPENSE, "plug"),
                 new CategoryReq("Other Expenses", null, CategoryType.EXPENSE, "shoppingBag"),
+                new CategoryReq("Initial Balance", null, CategoryType.INCOME, "cash"),
                 new CategoryReq("Salary", null, CategoryType.INCOME, "wallet"),
                 new CategoryReq("Other Incomes", null, CategoryType.INCOME, "coins")
         );
@@ -166,4 +246,12 @@ public class CategoryService {
         log.info("Finished creating default categories for user ID: {}", userId);
     }
 
+    // helper functions
+
+    private void evictCategoryCaches(Long userId, Long categoryId) {
+        cacheUtil.evict(CacheName.CATEGORY.getValue(), userId + ":" + categoryId);
+        cacheUtil.evict(CacheName.USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evict(CacheName.DELETED_USER_CATEGORIES.getValue(), String.valueOf(userId));
+        cacheUtil.evictOverviewCaches(userId);
+    }
 }

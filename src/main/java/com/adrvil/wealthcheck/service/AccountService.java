@@ -77,6 +77,8 @@ public class AccountService {
             throw new ResourceNotFound("Account");
         }
 
+        if (!account.isNewUser()) return;
+
         accountMapper.setIsNewUser(userId, false);
     }
 

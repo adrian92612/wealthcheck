@@ -20,6 +20,11 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BadRequestException.class)
+    public ApiResponseEntity<Void> handleBadRequest(BadRequestException ex) {
+        return ApiResponseEntity.error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(ResourceNotFound.class)
     public ApiResponseEntity<Void> handleCreationExceptions(ResourceNotFound ex) {
         log.error("Resource not found: ", ex);

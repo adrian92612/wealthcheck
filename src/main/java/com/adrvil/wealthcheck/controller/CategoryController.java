@@ -18,6 +18,11 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
+    @GetMapping()
+    public ApiResponseEntity<List<CategoryRes>> getAllCategory() {
+        return ApiResponseEntity.success(HttpStatus.FOUND, "Category List", categoryService.getAllCategories());
+    }
+
     @PostMapping()
     public ApiResponseEntity<CategoryRes> createCategory(@Valid @RequestBody CategoryReq req) {
         return ApiResponseEntity.success(HttpStatus.CREATED, "Category created", categoryService.createCategory(req, null));
@@ -38,10 +43,20 @@ public class CategoryController {
         return ApiResponseEntity.success(HttpStatus.OK, "Category deleted", categoryService.deleteCategory(id));
     }
 
-    @GetMapping()
-    public ApiResponseEntity<List<CategoryRes>> getAllCategory() {
-        return ApiResponseEntity.success(HttpStatus.FOUND, "Category List", categoryService.getAllCategories());
+    @GetMapping("/deleted")
+    public ApiResponseEntity<List<CategoryRes>> getAllSoftDeletedCategory() {
+        return ApiResponseEntity.success(HttpStatus.FOUND, "Deleted Category List", categoryService.getAllSoftDeletedCategories());
     }
 
+    @DeleteMapping("/permanent-delete/{id}")
+    public ApiResponseEntity<Void> deletePermanentCategory(@PathVariable Long id) {
+        categoryService.permanentDeleteCategory(id);
+        return ApiResponseEntity.success(HttpStatus.OK, "Category permanently deleted", null);
+    }
+
+    @PutMapping("/restore/{id}")
+    public ApiResponseEntity<CategoryRes> restoreCategory(@PathVariable Long id) {
+        return ApiResponseEntity.success(HttpStatus.OK, "Category restored", categoryService.restoreCategory(id));
+    }
 
 }
