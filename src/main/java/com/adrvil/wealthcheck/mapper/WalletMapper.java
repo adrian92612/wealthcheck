@@ -39,7 +39,16 @@ public interface WalletMapper {
                 WHERE user_id = #{userId} AND soft_deleted = #{softDeleted}
                 ORDER BY created_at DESC
             """)
-    List<WalletEntity> findByUserId(Long userId, boolean softDeleted);
+    List<WalletEntity> findWalletListByUserId(Long userId, boolean softDeleted);
+
+//    @Select("""
+//            SELECT id
+//            FROM wallet
+//            WHERE id = #{id}
+//                AND user_id = #{userId}
+//                AND soft_deleted = #{softDeleted}
+//            """)
+//    WalletEntity findWalletByUserIdAndId(Long userId, Long id, boolean softDeleted);
 
     @Select("""
                 SELECT

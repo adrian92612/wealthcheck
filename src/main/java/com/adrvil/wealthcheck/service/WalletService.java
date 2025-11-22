@@ -30,7 +30,6 @@ public class WalletService {
     private final AccountService accountService;
     private final WalletMapper walletMapper;
     private final CacheUtil cacheUtil;
-    private final TransactionService transactionService;
     private final CategoryMapper categoryMapper;
     private final TransactionMapper transactionMapper;
 
@@ -110,7 +109,7 @@ public class WalletService {
 
         log.debug("Fetching all wallets for user: {}", userId);
 
-        List<WalletEntity> walletEntityList = walletMapper.findByUserId(userId, false);
+        List<WalletEntity> walletEntityList = walletMapper.findWalletListByUserId(userId, false);
 
         log.info("Returning {} wallets for user: {}", walletEntityList.size(), userId);
 
@@ -133,7 +132,7 @@ public class WalletService {
 
         log.debug("Fetching all soft deleted wallets for user: {}", userId);
 
-        List<WalletEntity> walletEntityList = walletMapper.findByUserId(userId, true);
+        List<WalletEntity> walletEntityList = walletMapper.findWalletListByUserId(userId, true);
 
         log.info("Returning {} soft deleted wallets for user: {}", walletEntityList.size(), userId);
 

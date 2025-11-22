@@ -3,6 +3,8 @@ package com.adrvil.wealthcheck.controller;
 import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
 import com.adrvil.wealthcheck.dto.CurrentOverviewDto;
 import com.adrvil.wealthcheck.dto.OverviewTopTransactionsDto;
+import com.adrvil.wealthcheck.dto.response.DailyNetRes;
+import com.adrvil.wealthcheck.dto.response.TopCategoriesRes;
 import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.service.OverviewSummaryService;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +29,21 @@ public class OverviewSummaryController {
 
     @GetMapping("/top-transactions")
     public ApiResponseEntity<OverviewTopTransactionsDto> getTopTransactions() {
-        return ApiResponseEntity.success(HttpStatus.OK, "Top Income/Expense", overviewSummaryService.getTopCategories());
+        return ApiResponseEntity.success(HttpStatus.OK, "Top Income/Expense", overviewSummaryService.getTopTransactions());
     }
 
     @GetMapping("/recent-transactions")
     public ApiResponseEntity<List<TransactionRes>> getRecentTransactionsNew() {
         return ApiResponseEntity.success(HttpStatus.OK, "Recent Transactions", overviewSummaryService.getRecentTransactions());
+    }
+
+    @GetMapping("/daily-net-snapshot")
+    public ApiResponseEntity<List<DailyNetRes>> getDailyNetSnapshot() {
+        return ApiResponseEntity.success(HttpStatus.OK, "Daily Net Snapshot", overviewSummaryService.getDailyNetSnapshot());
+    }
+
+    @GetMapping("/top-categories")
+    public ApiResponseEntity<TopCategoriesRes> getTopCategories() {
+        return ApiResponseEntity.success(HttpStatus.OK, "Top Categories", overviewSummaryService.getTopCategories());
     }
 }
