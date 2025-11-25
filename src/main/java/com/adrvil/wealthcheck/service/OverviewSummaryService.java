@@ -10,6 +10,7 @@ import com.adrvil.wealthcheck.enums.TransactionType;
 import com.adrvil.wealthcheck.mapper.OverviewSummaryMapper;
 import com.adrvil.wealthcheck.mapper.TransactionMapper;
 import com.adrvil.wealthcheck.utils.CacheUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,10 +29,18 @@ public class OverviewSummaryService {
     private final TransactionMapper transactionMapper;
     private final AccountService accountService;
     private final CacheUtil cacheUtil;
+    private final ObjectMapper objectMapper;
 
     public CurrentOverviewDto getOverviewSummary() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = String.valueOf(userId);
         log.debug("Getting overview summary for user: {}", userId);
+
+        Object cachedObj = cacheUtil.get(CacheName.OVERVIEW.getValue(), cacheKey);
+        if (cachedObj != null) {
+            log.info("Returning cached overview summary for user: {}", userId);
+            return objectMapper.convertValue(cachedObj, CurrentOverviewDto.class);
+        }
 
         BigDecimal totalBalance = overviewSummaryMapper.getTotalBalance(userId);
         BigDecimal incomeThisMonth = overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.INCOME);
@@ -39,6 +48,8 @@ public class OverviewSummaryService {
         BigDecimal netCashFlow = incomeThisMonth.subtract(expenseThisMonth);
         BigDecimal lastMonthBalance = totalBalance.subtract(netCashFlow);
         BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+
+        log.info("lastMonthBalance: {}", lastMonthBalance);
 
         BigDecimal percentageDiff;
 
@@ -65,8 +76,8 @@ public class OverviewSummaryService {
         BigDecimal dailyAverageSpending = expenseThisMonth
                 .divide(BigDecimal.valueOf(dayOfMonth), 2, RoundingMode.HALF_UP);
 
-        log.info("Overview summary for user {} - Balance: {}, Income: {}, Expense: {}, Net: {}",
-                userId, totalBalance, incomeThisMonth, expenseThisMonth, netCashFlow);
+        log.info("Overview summary for user {} - Balance: {}, percentageDiff: {}, dailyAverageSpending: {}",
+                userId, totalBalance, percentageDiff, dailyAverageSpending);
 
         CurrentOverviewDto result = new CurrentOverviewDto(
                 totalBalance,
@@ -74,14 +85,27 @@ public class OverviewSummaryService {
                 dailyAverageSpending
         );
 
-        cacheUtil.put(CacheName.OVERVIEW.getValue(), String.valueOf(userId), result);
+        cacheUtil.put(CacheName.OVERVIEW.getValue(), cacheKey, result);
 
         return result;
     }
 
     public OverviewTopTransactionsDto getTopTransactions() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = String.valueOf(userId);
         log.debug("Getting top transactions for user: {}", userId);
+
+        Object cachedObj = cacheUtil.get(CacheName.TOP_TRANSACTIONS.getValue(), cacheKey);
+        if (cachedObj != null) {
+            log.info("Returning cached top transactions for user: {}", userId);
+            return objectMapper.convertValue(cachedObj, OverviewTopTransactionsDto.class);
+        }
+
+//        OverviewTopTransactionsDto cached = cacheUtil.get(CacheName.TOP_TRANSACTIONS.getValue(), cacheKey);
+//        if (cached != null) {
+//            log.info("Returning cached top transactions for user: {}", userId);
+//            return cached;
+//        }
 
         int topTxnCount = 3;
 
@@ -90,32 +114,40 @@ public class OverviewSummaryService {
 
         OverviewTopTransactionsDto result = new OverviewTopTransactionsDto(topIncomes, topExpenses);
 
-        cacheUtil.put(CacheName.TOP_TRANSACTIONS.getValue(), String.valueOf(userId), result);
+        cacheUtil.put(CacheName.TOP_TRANSACTIONS.getValue(), cacheKey, result);
 
         return result;
     }
 
     public List<TransactionRes> getRecentTransactions() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = String.valueOf(userId);
         log.debug("Getting recent transactions for user: {}", userId);
+
+        List<TransactionRes> cached = cacheUtil.get(CacheName.RECENT_TRANSACTIONS.getValue(), cacheKey);
+        if (cached != null) {
+            log.info("Returning cached recent transactions for user: {}", userId);
+            return cached;
+        }
 
         List<TransactionRes> recentTransactions = transactionMapper.getRecentTransactions(userId, 3);
 
         log.info("Returning {} recent transactions for user {}", recentTransactions.size(), userId);
 
-        cacheUtil.put(CacheName.RECENT_TRANSACTIONS.getValue(), String.valueOf(userId), recentTransactions);
+        cacheUtil.put(CacheName.RECENT_TRANSACTIONS.getValue(), cacheKey, recentTransactions);
 
         return recentTransactions;
     }
 
     public List<DailyNetRes> getDailyNetSnapshot() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        log.debug("Getting daily snapshot for user: {}", userId);
+        String cacheKey = String.valueOf(userId);
+        log.info("Getting daily snapshot for user: {}", userId);
 
         // Check cache first
-        List<DailyNetRes> cached = cacheUtil.get(CacheName.DAILY_NET.getValue(), String.valueOf(userId));
+        List<DailyNetRes> cached = cacheUtil.get(CacheName.DAILY_NET.getValue(), cacheKey);
         if (cached != null) {
-            log.debug("Returning cached daily net snapshot for user: {}", userId);
+            log.info("Returning cached daily net snapshot for user: {}", userId);
             return cached;
         }
 
@@ -155,8 +187,8 @@ public class OverviewSummaryService {
         }
 
         // Cache result
-        cacheUtil.put(CacheName.DAILY_NET.getValue(), String.valueOf(userId), dailyNetResList);
-        log.debug("Cached cumulative daily net snapshot for user: {}", userId);
+        cacheUtil.put(CacheName.DAILY_NET.getValue(), cacheKey, dailyNetResList);
+        log.info("Cached cumulative daily net snapshot for user: {}", userId);
 
         return dailyNetResList;
     }
@@ -164,20 +196,14 @@ public class OverviewSummaryService {
 
     public TopCategoriesRes getTopCategories() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-//        String cacheKey = String.valueOf(userId);
+        String cacheKey = String.valueOf(userId);
         log.debug("Getting top categories for user: {}", userId);
 
-//        TopCategoriesRes cached = cacheUtil.get(CacheName.TOP_CATEGORIES.getValue(), cacheKey);
-//        if (cached != null) {
-//            log.debug("Returning cached top categories for user: {}", userId);
-//            return cached;
-//        }
-
-//        Object cachedObj = cacheUtil.get(CacheName.TOP_CATEGORIES.getValue(), cacheKey);
-//        if (cachedObj != null) {
-//            log.debug("Returning cached top categories for user: {}", userId);
-//            return new ObjectMapper().convertValue(cachedObj, TopCategoriesRes.class);
-//        }
+        Object cachedObj = cacheUtil.get(CacheName.TOP_CATEGORIES.getValue(), cacheKey);
+        if (cachedObj != null) {
+            log.debug("Returning cached top categories for user: {}", userId);
+            return objectMapper.convertValue(cachedObj, TopCategoriesRes.class);
+        }
 
         LocalDate startDate = LocalDate.now().withDayOfMonth(1);
         LocalDate endDate = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()).plusDays(1);
@@ -201,9 +227,9 @@ public class OverviewSummaryService {
             finalTopExpense = topExpenseCategories;
         }
 
-//        TopCategoriesRes result =
-//        cacheUtil.put(CacheName.TOP_CATEGORIES.getValue(), cacheKey, result);
-        return new TopCategoriesRes(finalTopIncome, finalTopExpense);
+        TopCategoriesRes result = new TopCategoriesRes(finalTopIncome, finalTopExpense);
+        cacheUtil.put(CacheName.TOP_CATEGORIES.getValue(), cacheKey, result);
+        return result;
     }
 
     private List<CategoryPieRes> reduceTopCategories(List<CategoryPieRes> categories) {
