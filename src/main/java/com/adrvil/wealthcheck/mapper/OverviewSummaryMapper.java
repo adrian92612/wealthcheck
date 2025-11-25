@@ -77,6 +77,7 @@ public interface OverviewSummaryMapper {
                 AND type in ('INCOME','EXPENSE')
                 AND created_at >= #{startDate}
                 AND created_at < #{endDate}
+                AND soft_deleted = FALSE
             """)
     List<TransactionForNetDto> getTransactionForNetList(Long userId, LocalDate startDate, LocalDate endDate);
 
@@ -90,6 +91,7 @@ public interface OverviewSummaryMapper {
               AND t.type = #{type}::transaction_type
               AND t.created_at >= #{startDate}
               AND t.created_at < #{endDate}
+              AND t.soft_deleted = FALSE
             GROUP BY c.name
             ORDER BY total_amount DESC
             """)
