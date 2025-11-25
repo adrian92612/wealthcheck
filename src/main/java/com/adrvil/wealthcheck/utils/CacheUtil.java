@@ -35,18 +35,20 @@ public class CacheUtil {
         }
     }
 
-    public void evictAll(String cacheName) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache != null) {
-            cache.clear();
-        }
-    }
+//    public void evictAll(String cacheName) {
+//        Cache cache = cacheManager.getCache(cacheName);
+//        if (cache != null) {
+//            cache.clear();
+//        }
+//    }
 
     public void evictOverviewCaches(Long userId) {
-        evict(CacheName.USER_TRANSACTIONS.getValue(), String.valueOf(userId));
-        evict(CacheName.OVERVIEW.getValue(), String.valueOf(userId));
-        evict(CacheName.TOP_TRANSACTIONS.getValue(), String.valueOf(userId));
-        evict(CacheName.RECENT_TRANSACTIONS.getValue(), String.valueOf(userId));
+        String key = String.valueOf(userId);
+        evict(CacheName.USER_TRANSACTIONS.getValue(), key);
+        evict(CacheName.OVERVIEW.getValue(), key);
+        evict(CacheName.TOP_TRANSACTIONS.getValue(), key);
+        evict(CacheName.RECENT_TRANSACTIONS.getValue(), key);
+        evict(CacheName.DAILY_NET.getValue(), key);
     }
 
     public void evictWalletCaches(Long userId, Long walletId) {

@@ -162,9 +162,9 @@ public interface TransactionMapper {
                 WHERE t.user_id = #{userId}
                 AND t.soft_deleted = FALSE
                 ORDER BY t.created_at DESC
-                LIMIT 5
+                LIMIT #{limit}
             """)
-    List<TransactionRes> getRecentTransactions(Long userId);
+    List<TransactionRes> getRecentTransactions(Long userId, int limit);
 
     @Select("""
             SELECT
@@ -228,4 +228,6 @@ public interface TransactionMapper {
                    );
             """)
     BigDecimal calculateNetBalanceForWallet(Long walletId, Long userId);
+
+
 }

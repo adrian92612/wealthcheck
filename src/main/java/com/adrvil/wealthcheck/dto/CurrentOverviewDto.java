@@ -4,8 +4,7 @@ import java.math.BigDecimal;
 
 public record CurrentOverviewDto(
         BigDecimal totalBalance,
-        BigDecimal incomeThisMonth,
-        BigDecimal expenseThisMonth,
-        BigDecimal netCashFlow
+        BigDecimal percentageDifference,
+        BigDecimal dailyAverageSpending
 ) {
 }
