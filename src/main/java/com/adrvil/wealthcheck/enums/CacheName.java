@@ -20,6 +20,8 @@ public enum CacheName {
     DELETED_USER_TRANSACTIONS("deleted-user-transactions"),
     DAILY_NET("daily-net"),
     TOP_CATEGORIES("top-categories"),
+    MONEY_GOAL("money-goal"),
+    MONEY_BUDGET("money-budget"),
     ;
     private final String value;
 }

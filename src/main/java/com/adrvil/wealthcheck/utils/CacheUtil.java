@@ -50,6 +50,8 @@ public class CacheUtil {
         evict(CacheName.RECENT_TRANSACTIONS.getValue(), key);
         evict(CacheName.DAILY_NET.getValue(), key);
         evict(CacheName.TOP_CATEGORIES.getValue(), key);
+        evict(CacheName.MONEY_GOAL.getValue(), key);
+        evict(CacheName.MONEY_BUDGET.getValue(), key);
     }
 
     public void evictWalletCaches(Long userId, Long walletId) {
