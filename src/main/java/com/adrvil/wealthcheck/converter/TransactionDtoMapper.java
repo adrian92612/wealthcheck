@@ -19,6 +19,7 @@ public class TransactionDtoMapper {
                 .notes(req.notes())
                 .amount(req.amount())
                 .type(req.type())
+                .transactionDate(req.transactionDate())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -33,6 +34,9 @@ public class TransactionDtoMapper {
     ) {
         return new TransactionRes(
                 entity.getId(),
+                entity.getTitle(),
+                entity.getNotes(),
+                entity.getAmount(),
                 entity.getFromWalletId(),
                 entity.getToWalletId(),
                 entity.getCategoryId(),
@@ -40,10 +44,8 @@ public class TransactionDtoMapper {
                 toWalletName,
                 categoryName,
                 categoryIcon,
-                entity.getTitle(),
-                entity.getNotes(),
-                entity.getAmount(),
                 entity.getType(),
+                entity.getTransactionDate(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

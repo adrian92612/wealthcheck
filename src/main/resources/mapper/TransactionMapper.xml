@@ -29,21 +29,21 @@
         <choose>
             <!-- Single day - use range for index -->
             <when test="filter.fromDate != null and filter.toDate != null and filter.fromDate.equals(filter.toDate)">
-                AND created_at &gt;= #{filter.fromDate}::date
-                AND created_at &lt; (#{filter.fromDate}::date + INTERVAL '1 day')
+                AND transaction_date &gt;= #{filter.fromDate}::date
+                AND transaction_date &lt; (#{filter.fromDate}::date + INTERVAL '1 day')
             </when>
             <!-- Date range - use range for index -->
             <when test="filter.fromDate != null and filter.toDate != null">
-                AND created_at &gt;= #{filter.fromDate}::date
-                AND created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+                AND transaction_date &gt;= #{filter.fromDate}::date
+                AND transaction_date &lt; (#{filter.toDate}::date + INTERVAL '1 day')
             </when>
             <!-- Only from date -->
             <when test="filter.fromDate != null">
-                AND created_at &gt;= #{filter.fromDate}::date
+                AND transaction_date &gt;= #{filter.fromDate}::date
             </when>
             <!-- Only to date -->
             <when test="filter.toDate != null">
-                AND created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+                AND transaction_date &lt; (#{filter.toDate}::date + INTERVAL '1 day')
             </when>
         </choose>
 
@@ -62,6 +62,9 @@
             resultType="com.adrvil.wealthcheck.dto.response.TransactionRes">
         SELECT
         t.id,
+        t.title,
+        t.notes,
+        t.amount,
         t.from_wallet_id AS fromWalletId,
         t.to_wallet_id AS toWalletId,
         t.category_id AS categoryId,
@@ -69,10 +72,8 @@
         tw.name AS toWalletName,
         c.name AS categoryName,
         c.icon AS categoryIcon,
-        t.title,
-        t.notes,
-        t.amount,
         t.type,
+        t.transaction_date,
         t.created_at AS createdAt,
         t.updated_at AS updatedAt
         FROM transactions t
@@ -110,21 +111,21 @@
         <choose>
             <!-- Single day - use range for index -->
             <when test="filter.fromDate != null and filter.toDate != null and filter.fromDate.equals(filter.toDate)">
-                AND t.created_at &gt;= #{filter.fromDate}::date
-                AND t.created_at &lt; (#{filter.fromDate}::date + INTERVAL '1 day')
+                AND t.transaction_date &gt;= #{filter.fromDate}::date
+                AND t.transaction_date &lt; (#{filter.fromDate}::date + INTERVAL '1 day')
             </when>
             <!-- Date range - use range for index -->
             <when test="filter.fromDate != null and filter.toDate != null">
-                AND t.created_at &gt;= #{filter.fromDate}::date
-                AND t.created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+                AND t.transaction_date &gt;= #{filter.fromDate}::date
+                AND t.transaction_date &lt; (#{filter.toDate}::date + INTERVAL '1 day')
             </when>
             <!-- Only from date -->
             <when test="filter.fromDate != null">
-                AND t.created_at &gt;= #{filter.fromDate}::date
+                AND t.transaction_date &gt;= #{filter.fromDate}::date
             </when>
             <!-- Only to date -->
             <when test="filter.toDate != null">
-                AND t.created_at &lt; (#{filter.toDate}::date + INTERVAL '1 day')
+                AND t.transaction_date &lt; (#{filter.toDate}::date + INTERVAL '1 day')
             </when>
         </choose>
 
@@ -137,7 +138,7 @@
             )
         </if>
 
-        ORDER BY t.created_at DESC
+        ORDER BY t.transaction_date DESC
 
         <!-- pagination -->
         <if test="filter.page != null and filter.size != null">

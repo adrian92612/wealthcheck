@@ -11,8 +11,8 @@ import lombok.experimental.SuperBuilder;
 public class AccountEntity extends BaseEntity {
     private String name;
     private String email;
+    private String provider;
     private String providerId;
     private String avatarUrl;
-    private boolean isActive;
     private boolean isNewUser;
 }

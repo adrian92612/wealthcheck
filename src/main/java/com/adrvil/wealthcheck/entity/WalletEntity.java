@@ -17,5 +17,4 @@ public class WalletEntity extends BaseEntity {
     private String name;
     private BigDecimal balance;
     private Long userId;
-    private boolean softDeleted;
 }
