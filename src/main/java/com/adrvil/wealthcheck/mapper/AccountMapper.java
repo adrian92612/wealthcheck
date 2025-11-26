@@ -12,17 +12,17 @@ public interface AccountMapper {
                 INSERT INTO account(
                     name,
                     email,
+                    provider,
                     provider_id,
                     avatar_url,
-                    is_active,
                     created_at,
                     updated_at)
                 VALUES (
                     #{name},
                     #{email},
+                    #{provider},
                     #{providerId},
                     #{avatarUrl},
-                    #{isActive},
                     #{createdAt},
                     #{updatedAt})
             """)

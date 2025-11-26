@@ -13,10 +13,9 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class CategoryEntity extends BaseEntity {
-    private Long userId;
     private String name;
+    private Long userId;
     private String description;
     private CategoryType type;
     private String icon;
-    private boolean softDeleted;
 }

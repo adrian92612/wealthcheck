@@ -7,6 +7,9 @@ import java.time.Instant;
 
 public record TransactionRes(
         Long id,
+        String title,
+        String notes,
+        BigDecimal amount,
         Long fromWalletId,
         Long toWalletId,
         Long categoryId,
@@ -14,10 +17,8 @@ public record TransactionRes(
         String toWalletName,
         String categoryName,
         String categoryIcon,
-        String title,
-        String notes,
-        BigDecimal amount,
         TransactionType type,
+        Instant transactionDate,
         Instant createdAt,
         Instant updatedAt
 ) {

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 public record TransactionReq(
         Long fromWalletId,
@@ -21,6 +22,9 @@ public record TransactionReq(
         BigDecimal amount,
 
         @NotNull(message = "Type is required")
-        TransactionType type
+        TransactionType type,
+
+        @NotNull(message = "Transaction date is required")
+        Instant transactionDate
 ) {
 }

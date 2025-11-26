@@ -94,6 +94,7 @@ public class TransactionService {
         existing.setNotes(req.notes());
         existing.setAmount(req.amount());
         existing.setType(req.type());
+        existing.setTransactionDate(req.transactionDate());
 
         int updated = transactionMapper.update(existing);
         if (updated == 0) {

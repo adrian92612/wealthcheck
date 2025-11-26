@@ -27,9 +27,9 @@ public class AccountService {
         AccountEntity account = AccountEntity.builder()
                 .name(googleUserDto.name())
                 .email(googleUserDto.email())
+                .provider("google")
                 .providerId(googleUserDto.id())
                 .avatarUrl(googleUserDto.picture())
-                .isActive(true)
                 .createdAt(new Date().toInstant())
                 .updatedAt(new Date().toInstant())
                 .build();

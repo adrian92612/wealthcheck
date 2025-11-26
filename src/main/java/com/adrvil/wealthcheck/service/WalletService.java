@@ -49,13 +49,14 @@ public class WalletService {
 
         Long initialBalanceCategoryId = categoryMapper.getCategoryIdByName(userId, "Initial Balance");
         TransactionEntity initialTransaction = TransactionEntity.builder()
+                .title(walletDtoReq.name() + " initial balance")
+                .notes("(System generated)")
+                .amount(initialBalance)
                 .userId(userId)
                 .toWalletId(wallet.getId())
                 .categoryId(initialBalanceCategoryId)
-                .title(walletDtoReq.name() + " initial balance")
-                .notes("System generated")
                 .type(TransactionType.INCOME)
-                .amount(initialBalance)
+                .transactionDate(Instant.now())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .softDeleted(false)

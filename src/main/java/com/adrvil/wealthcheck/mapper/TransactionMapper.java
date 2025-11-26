@@ -14,26 +14,28 @@ public interface TransactionMapper {
 
     @Insert("""
                 INSERT INTO transactions (
+                     title,
+                     notes,
+                     amount,
                      user_id,
                      from_wallet_id,
                      to_wallet_id,
                      category_id,
-                     title,
-                     notes,
-                     amount,
                      type,
+                     transaction_date,
                      soft_deleted,
                      created_at,
                      updated_at)
                 VALUES (
+                    #{title},
+                    #{notes},
+                    #{amount},
                     #{userId},
                     #{fromWalletId},
                     #{toWalletId},
                     #{categoryId},
-                    #{title},
-                    #{notes},
-                    #{amount},
                     #{type}::transaction_type,
+                    #{transactionDate},
                     #{softDeleted},
                     #{createdAt},
                     #{updatedAt})
@@ -51,6 +53,7 @@ public interface TransactionMapper {
                     notes = #{notes},
                     amount = #{amount},
                     type = #{type}::transaction_type,
+                    transaction_date = #{transactionDate},
                     updated_at = NOW()
                 WHERE id = #{id} AND user_id = #{userId} AND soft_deleted = FALSE
             """)
@@ -58,6 +61,9 @@ public interface TransactionMapper {
 
     @Select("""
                 SELECT t.id,
+                       t.title,
+                       t.notes,
+                       t.amount,
                        t.from_wallet_id,
                        t.to_wallet_id,
                        t.category_id,
@@ -65,10 +71,8 @@ public interface TransactionMapper {
                        tw.name AS toWalletName,
                        c.name AS categoryName,
                        c.icon AS categoryIcon,
-                       t.title,
-                       t.notes,
-                       t.amount,
                        t.type,
+                       t.transaction_date,
                        t.created_at,
                        t.updated_at
                 FROM transactions t
@@ -133,6 +137,9 @@ public interface TransactionMapper {
     @Select("""
             SELECT
                 t.id,
+                t.title,
+                t.notes,
+                t.amount,
                 t.from_wallet_id AS fromWalletId,
                 t.to_wallet_id AS toWalletId,
                 t.category_id AS categoryId,
@@ -140,10 +147,8 @@ public interface TransactionMapper {
                 tw.name AS toWalletName,
                 c.name AS categoryName,
                 c.icon AS categoryIcon,
-                t.title,
-                t.notes,
-                t.amount,
                 t.type,
+                t.transaction_date,
                 t.created_at AS createdAt,
                 t.updated_at AS updatedAt
                 FROM transactions t
@@ -161,7 +166,7 @@ public interface TransactionMapper {
                     AND c.soft_deleted = FALSE
                 WHERE t.user_id = #{userId}
                 AND t.soft_deleted = FALSE
-                ORDER BY t.created_at DESC
+                ORDER BY t.transaction_date DESC
                 LIMIT #{limit}
             """)
     List<TransactionRes> getRecentTransactions(Long userId, int limit);
@@ -169,6 +174,9 @@ public interface TransactionMapper {
     @Select("""
             SELECT
                 t.id,
+                t.title,
+                t.notes,
+                t.amount,
                 t.from_wallet_id AS fromWalletId,
                 t.to_wallet_id AS toWalletId,
                 t.category_id AS categoryId,
@@ -176,10 +184,8 @@ public interface TransactionMapper {
                 tw.name AS toWalletName,
                 c.name AS categoryName,
                 c.icon AS categoryIcon,
-                t.title,
-                t.notes,
-                t.amount,
                 t.type,
+                t.transaction_date,
                 t.created_at AS createdAt,
                 t.updated_at AS updatedAt
                 FROM transactions t

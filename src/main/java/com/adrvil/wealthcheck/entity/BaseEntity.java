@@ -15,4 +15,5 @@ public class BaseEntity {
     private Long id;
     private Instant createdAt;
     private Instant updatedAt;
+    private boolean softDeleted;
 }
