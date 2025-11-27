@@ -1,10 +1,10 @@
 package com.adrvil.wealthcheck.service;
 
+import com.adrvil.wealthcheck.converter.MoneyGoalDtoMapper;
 import com.adrvil.wealthcheck.dto.*;
-import com.adrvil.wealthcheck.dto.response.CategoryPieRes;
-import com.adrvil.wealthcheck.dto.response.DailyNetRes;
-import com.adrvil.wealthcheck.dto.response.TopCategoriesRes;
-import com.adrvil.wealthcheck.dto.response.TransactionRes;
+import com.adrvil.wealthcheck.dto.request.MoneyGoalReq;
+import com.adrvil.wealthcheck.dto.response.*;
+import com.adrvil.wealthcheck.entity.MoneyGoalEntity;
 import com.adrvil.wealthcheck.enums.CacheName;
 import com.adrvil.wealthcheck.enums.TransactionType;
 import com.adrvil.wealthcheck.mapper.OverviewSummaryMapper;
@@ -46,49 +46,49 @@ public class OverviewSummaryService {
         BigDecimal incomeThisMonth = overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.INCOME);
         BigDecimal expenseThisMonth = overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.EXPENSE);
         BigDecimal netCashFlow = incomeThisMonth.subtract(expenseThisMonth);
+
         BigDecimal lastMonthBalance = totalBalance.subtract(netCashFlow);
-        BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
         log.info("lastMonthBalance: {}", lastMonthBalance);
+
+        BigDecimal change = totalBalance.subtract(lastMonthBalance);
 
         BigDecimal percentageDiff;
 
         if (lastMonthBalance.compareTo(BigDecimal.ZERO) == 0) {
-
-            int cmp = netCashFlow.compareTo(BigDecimal.ZERO);
-
-            if (cmp > 0) {
-                percentageDiff = ONE_HUNDRED; // +100%
-            } else if (cmp == 0) {
-                percentageDiff = BigDecimal.ZERO; // 0%
-            } else {
-                percentageDiff = ONE_HUNDRED.negate(); // -100%
-            }
-
+            int cmp = change.compareTo(BigDecimal.ZERO);
+            percentageDiff = cmp > 0 ? BigDecimal.valueOf(100)
+                    : cmp < 0 ? BigDecimal.valueOf(-100)
+                    : BigDecimal.ZERO;
         } else {
-            percentageDiff = netCashFlow
-                    .subtract(lastMonthBalance)
-                    .divide(lastMonthBalance, 4, RoundingMode.HALF_UP)
-                    .multiply(ONE_HUNDRED);
+            percentageDiff = change
+                    .divide(lastMonthBalance.abs(), 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
         }
 
+
         int dayOfMonth = LocalDate.now().getDayOfMonth();
+
         BigDecimal dailyAverageSpending = expenseThisMonth
                 .divide(BigDecimal.valueOf(dayOfMonth), 2, RoundingMode.HALF_UP);
 
-        log.info("Overview summary for user {} - Balance: {}, percentageDiff: {}, dailyAverageSpending: {}",
-                userId, totalBalance, percentageDiff, dailyAverageSpending);
+        log.info(
+                "Overview summary for user {} - Balance: {}, percentageDiff: {}, dailyAverageSpending: {}",
+                userId, totalBalance, percentageDiff, dailyAverageSpending
+        );
 
         CurrentOverviewDto result = new CurrentOverviewDto(
                 totalBalance,
                 percentageDiff,
-                dailyAverageSpending
+                dailyAverageSpending,
+                lastMonthBalance
         );
 
         cacheUtil.put(CacheName.OVERVIEW.getValue(), cacheKey, result);
 
         return result;
     }
+
 
     public OverviewTopTransactionsDto getTopTransactions() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
@@ -232,6 +232,66 @@ public class OverviewSummaryService {
         return result;
     }
 
+    public Optional<MoneyGoalRes> getMoneyGoal() {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        String cacheKey = String.valueOf(userId);
+        String cacheName = CacheName.MONEY_GOAL.getValue();
+        log.debug("Getting money goal for user: {}", userId);
+
+//        MoneyGoalRes cached = cacheUtil.get(cacheName, cacheKey);
+//        if (cached != null) {
+//            log.debug("Returning money goal for user: {}", userId);
+//            return Optional.of(cached);
+//        }
+
+        Optional<MoneyGoalEntity> result = overviewSummaryMapper.getMoneyGoalByUserId(userId);
+
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+
+        BigDecimal currentBal = overviewSummaryMapper.getTotalBalance(userId);
+        MoneyGoalRes finalRes = new MoneyGoalRes(
+                result.get().getName(),
+                result.get().getAmount(),
+                currentBal
+        );
+
+//        cacheUtil.put(cacheName, cacheKey, finalRes);
+
+        return Optional.of(finalRes);
+    }
+
+    public Optional<MoneyGoalRes> addMoneyGoal(MoneyGoalReq req) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug("Creating/updating money goal for user: {}", userId);
+
+        Optional<MoneyGoalEntity> existing = overviewSummaryMapper.getMoneyGoalByUserId(userId);
+        MoneyGoalEntity entity = MoneyGoalDtoMapper.toEntity(req, userId);
+
+        if (existing.isEmpty()) {
+            overviewSummaryMapper.createMoneyGoal(entity);
+        } else {
+            int updated = overviewSummaryMapper.updateMoneyGoal(entity);
+            if (updated == 0) {
+                log.error("Money goal update failed for user: {}", userId);
+            }
+        }
+
+        Optional<MoneyGoalEntity> moneyGoalEntityOpt = overviewSummaryMapper.getMoneyGoalByUserId(userId);
+        if (moneyGoalEntityOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        BigDecimal currentBal = overviewSummaryMapper.getTotalBalance(userId);
+        MoneyGoalEntity moneyGoalEntity = moneyGoalEntityOpt.get();
+
+        return Optional.of(MoneyGoalDtoMapper.toDto(moneyGoalEntity, currentBal));
+    }
+
+
+//    HELPER METHODS
+
     private List<CategoryPieRes> reduceTopCategories(List<CategoryPieRes> categories) {
         List<CategoryPieRes> top3 = new ArrayList<>(categories.subList(0, 3));
         BigDecimal othersAmount = categories.subList(3, categories.size())
@@ -241,5 +301,6 @@ public class OverviewSummaryService {
         top3.add(new CategoryPieRes("Other Categories", othersAmount));
         return top3;
     }
+
 
 }

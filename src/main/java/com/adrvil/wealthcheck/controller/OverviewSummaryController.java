@@ -3,17 +3,19 @@ package com.adrvil.wealthcheck.controller;
 import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
 import com.adrvil.wealthcheck.dto.CurrentOverviewDto;
 import com.adrvil.wealthcheck.dto.OverviewTopTransactionsDto;
+import com.adrvil.wealthcheck.dto.request.MoneyGoalReq;
 import com.adrvil.wealthcheck.dto.response.DailyNetRes;
+import com.adrvil.wealthcheck.dto.response.MoneyGoalRes;
 import com.adrvil.wealthcheck.dto.response.TopCategoriesRes;
 import com.adrvil.wealthcheck.dto.response.TransactionRes;
 import com.adrvil.wealthcheck.service.OverviewSummaryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -45,5 +47,15 @@ public class OverviewSummaryController {
     @GetMapping("/top-categories")
     public ApiResponseEntity<TopCategoriesRes> getTopCategories() {
         return ApiResponseEntity.success(HttpStatus.OK, "Top Categories", overviewSummaryService.getTopCategories());
+    }
+
+    @GetMapping("/money-goal")
+    public ApiResponseEntity<Optional<MoneyGoalRes>> getMoneyGoal() {
+        return ApiResponseEntity.success(HttpStatus.OK, "Current money goal", overviewSummaryService.getMoneyGoal());
+    }
+
+    @PostMapping("/money-goal")
+    public ApiResponseEntity<Optional<MoneyGoalRes>> addMoneyGoal(@Valid @RequestBody MoneyGoalReq req) {
+        return ApiResponseEntity.success(HttpStatus.CREATED, "Money goal created", overviewSummaryService.addMoneyGoal(req));
     }
 }
