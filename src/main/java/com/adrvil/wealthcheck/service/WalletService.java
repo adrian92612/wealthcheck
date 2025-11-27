@@ -40,29 +40,33 @@ public class WalletService {
         log.debug("Creating wallet for user: {}, name: {}", userId, walletDtoReq.name());
         BigDecimal initialBalance = walletDtoReq.balance();
 
-        if (initialBalance.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BadRequestException("Initial balance should be greater than zero");
+        if (initialBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Initial balance cannot be negative");
         }
 
         WalletEntity wallet = WalletDtoMapper.toEntity(userId, walletDtoReq);
         walletMapper.insert(wallet);
 
-        Long initialBalanceCategoryId = categoryMapper.getCategoryIdByName(userId, "Initial Balance");
-        TransactionEntity initialTransaction = TransactionEntity.builder()
-                .title(walletDtoReq.name() + " initial balance")
-                .notes("(System generated)")
-                .amount(initialBalance)
-                .userId(userId)
-                .toWalletId(wallet.getId())
-                .categoryId(initialBalanceCategoryId)
-                .type(TransactionType.INCOME)
-                .transactionDate(Instant.now())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .softDeleted(false)
-                .build();
+        if (initialBalance.compareTo(BigDecimal.ZERO) > 0) {
+            Instant now = Instant.now();
+            Long initialBalanceCategoryId = categoryMapper.getCategoryIdByName(userId, "Initial Balance");
+            TransactionEntity initialTransaction = TransactionEntity.builder()
+                    .title(walletDtoReq.name() + " initial balance")
+                    .notes("(System generated)")
+                    .amount(initialBalance)
+                    .userId(userId)
+                    .toWalletId(wallet.getId())
+                    .categoryId(initialBalanceCategoryId)
+                    .type(TransactionType.INCOME)
+                    .transactionDate(now)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .softDeleted(false)
+                    .build();
 
-        transactionMapper.insert(initialTransaction);
+            transactionMapper.insert(initialTransaction);
+        }
+
         accountService.finishOnboarding(userId);
 
         cacheUtil.evict(CacheName.USER_WALLETS.getValue(), String.valueOf(userId));
