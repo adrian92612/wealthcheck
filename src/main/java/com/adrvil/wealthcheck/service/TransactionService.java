@@ -44,6 +44,8 @@ public class TransactionService {
         WalletEntity fromWallet = fetchWallet(req.fromWalletId(), userId);
         WalletEntity toWallet = fetchWallet(req.toWalletId(), userId);
 
+        validateTransactionDate(req, fromWallet, toWallet);
+
         log.debug("Processing balance change - Type: {}, From: {}, To: {}, Amount: {}",
                 req.type(), req.fromWalletId(), req.toWalletId(), req.amount());
 
@@ -78,6 +80,8 @@ public class TransactionService {
 
         WalletEntity newFrom = fetchWallet(req.fromWalletId(), userId);
         WalletEntity newTo = fetchWallet(req.toWalletId(), userId);
+
+        validateTransactionDate(req, newFrom, newTo);
 
         log.debug("Reverting old balance - Type: {}, Amount: {}", existing.getType(), existing.getAmount());
 
@@ -369,4 +373,27 @@ public class TransactionService {
             );
         }
     }
+
+    private void validateTransactionDate(TransactionReq req, WalletEntity fromWallet, WalletEntity toWallet) {
+        if (req.transactionDate() == null) {
+            throw new InvalidTransactionRequestException("Transaction must have a date");
+        }
+
+        if (fromWallet != null) {
+            if (req.transactionDate().isBefore(fromWallet.getCreatedAt())) {
+                throw new InvalidTransactionRequestException(
+                        "Transaction date is earlier than the source wallet's creation date"
+                );
+            }
+        }
+
+        if (toWallet != null) {
+            if (req.transactionDate().isBefore(toWallet.getCreatedAt())) {
+                throw new InvalidTransactionRequestException(
+                        "Transaction date is earlier than the destination wallet's creation date"
+                );
+            }
+        }
+    }
+
 }
