@@ -71,6 +71,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataAccessException.class)
     public ApiResponseEntity<Void> handleDatabaseExceptions(DataAccessException ex) {
         log.error("Database error: ", ex);
+        Throwable root = ex.getRootCause();
+        
+        if (root != null && root.getMessage().contains("duplicate key value")) {
+            return ApiResponseEntity.error(
+                    HttpStatus.BAD_REQUEST,
+                    "Duplicate entry. A record with the same value already exists."
+            );
+        }
+
         return ApiResponseEntity.error(HttpStatus.INTERNAL_SERVER_ERROR, "Database error");
     }
 

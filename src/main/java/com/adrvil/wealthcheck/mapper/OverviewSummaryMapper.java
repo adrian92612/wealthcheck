@@ -26,8 +26,8 @@ public interface OverviewSummaryMapper {
                 SELECT COALESCE(SUM(amount), 0)
                 FROM transactions
                 WHERE type = #{type}::transaction_type
-                    AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
-                    AND created_at < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+                    AND transaction_date >= DATE_TRUNC('month', CURRENT_DATE)
+                    AND transaction_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
                     AND user_id = #{userId}
                     AND soft_deleted = false
             """)

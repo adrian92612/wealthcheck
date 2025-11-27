@@ -46,49 +46,49 @@ public class OverviewSummaryService {
         BigDecimal incomeThisMonth = overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.INCOME);
         BigDecimal expenseThisMonth = overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.EXPENSE);
         BigDecimal netCashFlow = incomeThisMonth.subtract(expenseThisMonth);
+
         BigDecimal lastMonthBalance = totalBalance.subtract(netCashFlow);
-        BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
         log.info("lastMonthBalance: {}", lastMonthBalance);
+
+        BigDecimal change = totalBalance.subtract(lastMonthBalance);
 
         BigDecimal percentageDiff;
 
         if (lastMonthBalance.compareTo(BigDecimal.ZERO) == 0) {
-
-            int cmp = netCashFlow.compareTo(BigDecimal.ZERO);
-
-            if (cmp > 0) {
-                percentageDiff = ONE_HUNDRED; // +100%
-            } else if (cmp == 0) {
-                percentageDiff = BigDecimal.ZERO; // 0%
-            } else {
-                percentageDiff = ONE_HUNDRED.negate(); // -100%
-            }
-
+            int cmp = change.compareTo(BigDecimal.ZERO);
+            percentageDiff = cmp > 0 ? BigDecimal.valueOf(100)
+                    : cmp < 0 ? BigDecimal.valueOf(-100)
+                    : BigDecimal.ZERO;
         } else {
-            percentageDiff = netCashFlow
-                    .subtract(lastMonthBalance)
-                    .divide(lastMonthBalance, 4, RoundingMode.HALF_UP)
-                    .multiply(ONE_HUNDRED);
+            percentageDiff = change
+                    .divide(lastMonthBalance.abs(), 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
         }
 
+
         int dayOfMonth = LocalDate.now().getDayOfMonth();
+
         BigDecimal dailyAverageSpending = expenseThisMonth
                 .divide(BigDecimal.valueOf(dayOfMonth), 2, RoundingMode.HALF_UP);
 
-        log.info("Overview summary for user {} - Balance: {}, percentageDiff: {}, dailyAverageSpending: {}",
-                userId, totalBalance, percentageDiff, dailyAverageSpending);
+        log.info(
+                "Overview summary for user {} - Balance: {}, percentageDiff: {}, dailyAverageSpending: {}",
+                userId, totalBalance, percentageDiff, dailyAverageSpending
+        );
 
         CurrentOverviewDto result = new CurrentOverviewDto(
                 totalBalance,
                 percentageDiff,
-                dailyAverageSpending
+                dailyAverageSpending,
+                lastMonthBalance
         );
 
         cacheUtil.put(CacheName.OVERVIEW.getValue(), cacheKey, result);
 
         return result;
     }
+
 
     public OverviewTopTransactionsDto getTopTransactions() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
