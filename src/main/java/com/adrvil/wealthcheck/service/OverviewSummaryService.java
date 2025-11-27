@@ -1,9 +1,11 @@
 package com.adrvil.wealthcheck.service;
 
+import com.adrvil.wealthcheck.converter.MoneyBudgetDtoMapper;
 import com.adrvil.wealthcheck.converter.MoneyGoalDtoMapper;
 import com.adrvil.wealthcheck.dto.*;
 import com.adrvil.wealthcheck.dto.request.MoneyGoalReq;
 import com.adrvil.wealthcheck.dto.response.*;
+import com.adrvil.wealthcheck.entity.MoneyBudgetEntity;
 import com.adrvil.wealthcheck.entity.MoneyGoalEntity;
 import com.adrvil.wealthcheck.enums.CacheName;
 import com.adrvil.wealthcheck.enums.TransactionType;
@@ -234,8 +236,8 @@ public class OverviewSummaryService {
 
     public Optional<MoneyGoalRes> getMoneyGoal() {
         Long userId = accountService.getCurrentAccountIdOrThrow();
-        String cacheKey = String.valueOf(userId);
-        String cacheName = CacheName.MONEY_GOAL.getValue();
+//        String cacheKey = String.valueOf(userId);
+//        String cacheName = CacheName.MONEY_GOAL.getValue();
         log.debug("Getting money goal for user: {}", userId);
 
 //        MoneyGoalRes cached = cacheUtil.get(cacheName, cacheKey);
@@ -279,14 +281,61 @@ public class OverviewSummaryService {
         }
 
         Optional<MoneyGoalEntity> moneyGoalEntityOpt = overviewSummaryMapper.getMoneyGoalByUserId(userId);
-        if (moneyGoalEntityOpt.isEmpty()) {
+        return moneyGoalEntityOpt.map(moneyGoalEntity -> MoneyGoalDtoMapper.
+                toDto(moneyGoalEntity, overviewSummaryMapper.getTotalBalance(userId)));
+
+    }
+
+    public Optional<MoneyBudgetRes> addMoneyBudget(MoneyBudgetReq req) {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+        log.debug("Creating/updating money goal for user: {}", userId);
+
+        Optional<MoneyBudgetEntity> existing = overviewSummaryMapper.getMoneyBudgetByUserId(userId);
+        MoneyBudgetEntity entity = MoneyBudgetDtoMapper.toEntity(req, userId);
+
+        if (existing.isEmpty()) {
+            overviewSummaryMapper.createMoneyBudget(entity);
+        } else {
+            int updated = overviewSummaryMapper.updateMoneyBudget(entity);
+            if (updated == 0) {
+                log.error("Money goal update failed for user: {}", userId);
+            }
+        }
+
+        Optional<MoneyBudgetEntity> entityOptional = overviewSummaryMapper.getMoneyBudgetByUserId(userId);
+        return entityOptional.map(moneyBudgetEntity -> MoneyBudgetDtoMapper.
+                toDto(moneyBudgetEntity, overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.EXPENSE)));
+
+    }
+
+    public Optional<MoneyBudgetRes> getMoneyBudget() {
+        Long userId = accountService.getCurrentAccountIdOrThrow();
+//        String cacheKey = String.valueOf(userId);
+//        String cacheName = CacheName.MONEY_GOAL.getValue();
+        log.debug("Getting money budget for user: {}", userId);
+
+//        MoneyGoalRes cached = cacheUtil.get(cacheName, cacheKey);
+//        if (cached != null) {
+//            log.debug("Returning money goal for user: {}", userId);
+//            return Optional.of(cached);
+//        }
+
+        Optional<MoneyBudgetEntity> result = overviewSummaryMapper.getMoneyBudgetByUserId(userId);
+
+        if (result.isEmpty()) {
             return Optional.empty();
         }
 
-        BigDecimal currentBal = overviewSummaryMapper.getTotalBalance(userId);
-        MoneyGoalEntity moneyGoalEntity = moneyGoalEntityOpt.get();
+        BigDecimal spentAmount = overviewSummaryMapper.getThisMonthIncomeOrExpense(userId, TransactionType.EXPENSE);
+        MoneyBudgetRes finalRes = new MoneyBudgetRes(
+                result.get().getName(),
+                result.get().getAmount(),
+                spentAmount
+        );
 
-        return Optional.of(MoneyGoalDtoMapper.toDto(moneyGoalEntity, currentBal));
+//        cacheUtil.put(cacheName, cacheKey, finalRes);
+
+        return Optional.of(finalRes);
     }
 
 
