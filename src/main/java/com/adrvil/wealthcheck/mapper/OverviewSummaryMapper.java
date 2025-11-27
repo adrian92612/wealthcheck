@@ -3,6 +3,7 @@ package com.adrvil.wealthcheck.mapper;
 import com.adrvil.wealthcheck.dto.CategoryNameProjection;
 import com.adrvil.wealthcheck.dto.TransactionForNetDto;
 import com.adrvil.wealthcheck.dto.response.CategoryPieRes;
+import com.adrvil.wealthcheck.entity.MoneyBudgetEntity;
 import com.adrvil.wealthcheck.entity.MoneyGoalEntity;
 import com.adrvil.wealthcheck.enums.TransactionType;
 import org.apache.ibatis.annotations.*;
@@ -99,6 +100,43 @@ public interface OverviewSummaryMapper {
             SELECT
                 name,
                 amount
+            FROM budget
+            WHERE user_id = #{userId} AND soft_deleted = FALSE;
+            """)
+    Optional<MoneyBudgetEntity> getMoneyBudgetByUserId(Long userId);
+
+    @Insert("""
+            INSERT INTO budget (
+                name,
+                amount,
+                user_id,
+                created_at,
+                updated_at,
+                soft_deleted)
+            VALUES (
+                #{name},
+                #{amount},
+                #{userId},
+                #{createdAt},
+                #{updatedAt},
+                #{softDeleted})
+            """)
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    void createMoneyBudget(MoneyBudgetEntity entity);
+
+    @Update("""
+            UPDATE budget
+            SET name = #{name},
+                amount = #{amount},
+                updated_at = NOW()
+            WHERE user_id = #{userId} AND soft_deleted = FALSE;
+            """)
+    int updateMoneyBudget(MoneyBudgetEntity entity);
+
+    @Select("""
+            SELECT
+                name,
+                amount
             FROM goal
             WHERE user_id = #{userId} AND soft_deleted = FALSE;
             """)
@@ -132,26 +170,26 @@ public interface OverviewSummaryMapper {
             """)
     int updateMoneyGoal(MoneyGoalEntity entity);
 
-    @Update("""
-            UPDATE goal
-            SET soft_deleted = TRUE,
-                updated_at = NOW()
-            WHERE user_id = #{userId} AND soft_deleted = FALSE;
-            """)
-    int softDeleteMoneyGoal(Long userId, Long id);
-
-    @Update("""
-            UPDATE goal
-            SET soft_deleted = FALSE,
-                updated_at = NOW()
-            WHERE user_id = #{userId} AND soft_deleted = TRUE;
-            """)
-    int restoreMoneyGoal(Long userId, Long id);
-
-    @Delete("""
-            DELETE FROM goal
-            WHERE user_id = #{userId} AND id = #{id}
-            """)
-    int permanentDeleteMoneyGoal(Long userId, Long id);
+//    @Update("""
+//            UPDATE goal
+//            SET soft_deleted = TRUE,
+//                updated_at = NOW()
+//            WHERE user_id = #{userId} AND soft_deleted = FALSE;
+//            """)
+//    int softDeleteMoneyGoal(Long userId, Long id);
+//
+//    @Update("""
+//            UPDATE goal
+//            SET soft_deleted = FALSE,
+//                updated_at = NOW()
+//            WHERE user_id = #{userId} AND soft_deleted = TRUE;
+//            """)
+//    int restoreMoneyGoal(Long userId, Long id);
+//
+//    @Delete("""
+//            DELETE FROM goal
+//            WHERE user_id = #{userId} AND id = #{id}
+//            """)
+//    int permanentDeleteMoneyGoal(Long userId, Long id);
 
 }

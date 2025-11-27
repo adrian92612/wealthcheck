@@ -4,10 +4,7 @@ import com.adrvil.wealthcheck.common.api.ApiResponseEntity;
 import com.adrvil.wealthcheck.dto.CurrentOverviewDto;
 import com.adrvil.wealthcheck.dto.OverviewTopTransactionsDto;
 import com.adrvil.wealthcheck.dto.request.MoneyGoalReq;
-import com.adrvil.wealthcheck.dto.response.DailyNetRes;
-import com.adrvil.wealthcheck.dto.response.MoneyGoalRes;
-import com.adrvil.wealthcheck.dto.response.TopCategoriesRes;
-import com.adrvil.wealthcheck.dto.response.TransactionRes;
+import com.adrvil.wealthcheck.dto.response.*;
 import com.adrvil.wealthcheck.service.OverviewSummaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -57,5 +54,15 @@ public class OverviewSummaryController {
     @PostMapping("/money-goal")
     public ApiResponseEntity<Optional<MoneyGoalRes>> addMoneyGoal(@Valid @RequestBody MoneyGoalReq req) {
         return ApiResponseEntity.success(HttpStatus.CREATED, "Money goal created", overviewSummaryService.addMoneyGoal(req));
+    }
+
+    @GetMapping("/money-budget")
+    public ApiResponseEntity<Optional<MoneyBudgetRes>> getMoneyBudget() {
+        return ApiResponseEntity.success(HttpStatus.OK, "Current money budget", overviewSummaryService.getMoneyBudget());
+    }
+
+    @PostMapping("/money-budget")
+    public ApiResponseEntity<Optional<MoneyBudgetRes>> addMoneyGoal(@Valid @RequestBody MoneyBudgetReq req) {
+        return ApiResponseEntity.success(HttpStatus.CREATED, "Money budget created", overviewSummaryService.addMoneyBudget(req));
     }
 }
