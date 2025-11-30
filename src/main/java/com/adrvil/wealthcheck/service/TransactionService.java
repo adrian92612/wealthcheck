@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -83,6 +84,16 @@ public class TransactionService {
         WalletEntity newTo = fetchWallet(req.toWalletId(), userId);
 
         validateTransactionDate(req, newFrom, newTo);
+
+        if (!existing.getType().equals(req.type())) {
+            throw new BadRequestException("Transaction type cannot be changed.");
+        }
+
+        if (!Objects.equals(existing.getFromWalletId(), req.fromWalletId())
+                || !Objects.equals(existing.getToWalletId(), req.toWalletId())) {
+            throw new BadRequestException("Cannot change source/destination wallet.");
+        }
+
 
         log.debug(
                 "Updating transaction {} -> Delta Apply | User: {} | OldType: {} | NewType: {} | OldAmount: {} | NewAmount: {} | OldFrom: {} | OldTo: {} | NewFrom: {} | NewTo: {}",
