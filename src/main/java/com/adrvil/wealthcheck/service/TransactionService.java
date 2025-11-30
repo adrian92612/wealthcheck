@@ -33,6 +33,7 @@ public class TransactionService {
     private final CategoryMapper categoryMapper;
     private final CacheUtil cacheUtil;
 
+
     @Transactional
     public TransactionRes createTransaction(TransactionReq req) {
         Long userId = accountService.getCurrentAccountIdOrThrow();
@@ -83,13 +84,20 @@ public class TransactionService {
 
         validateTransactionDate(req, newFrom, newTo);
 
-        log.debug("Reverting old balance - Type: {}, Amount: {}", existing.getType(), existing.getAmount());
+        log.debug(
+                "Updating transaction {} -> Delta Apply | User: {} | OldType: {} | NewType: {} | OldAmount: {} | NewAmount: {} | OldFrom: {} | OldTo: {} | NewFrom: {} | NewTo: {}",
+                existing.getId(),
+                userId,
+                existing.getType(), req.type(),
+                existing.getAmount(), req.amount(),
+                oldFrom != null ? oldFrom.getId() : null,
+                oldTo != null ? oldTo.getId() : null,
+                newFrom != null ? newFrom.getId() : null,
+                newTo != null ? newTo.getId() : null
+        );
 
-        processBalanceRevert(userId, existing.getType(), oldFrom, oldTo, existing.getAmount());
 
-        log.debug("Applying new balance - Type: {}, Amount: {}", req.type(), req.amount());
-
-        processBalanceChange(userId, req.type(), newFrom, newTo, req.amount());
+        applyDelta(existing.getType(),oldFrom,oldTo,newFrom,newTo,existing.getAmount(),req.amount(),userId);
 
         existing.setFromWalletId(req.fromWalletId());
         existing.setToWalletId(req.toWalletId());
@@ -316,19 +324,6 @@ public class TransactionService {
         }
     }
 
-    private void processBalanceRevert(Long userId, TransactionType type, WalletEntity oldFrom,
-                                      WalletEntity oldTo, BigDecimal amount) {
-        switch (type) {
-            case EXPENSE -> increaseBalance(userId, oldFrom, amount);
-            case INCOME -> decreaseBalance(userId, oldTo, amount);
-            case TRANSFER -> {
-                increaseBalance(userId, oldFrom, amount);
-                decreaseBalance(userId, oldTo, amount);
-            }
-            default -> throw new UnsupportedTransactionTypeException();
-        }
-    }
-
     private void decreaseBalance(Long userId, WalletEntity wallet, BigDecimal amount) {
         if (wallet == null || userId == null) throw new IllegalArgumentException("Wallet and userId required for expense/transfer");
         int updated = walletMapper.decreaseBalance(userId, wallet.getId(), amount);
@@ -392,6 +387,73 @@ public class TransactionService {
                 throw new InvalidTransactionRequestException(
                         "Transaction date is earlier than the destination wallet's creation date"
                 );
+            }
+        }
+    }
+
+    private BigDecimal computeDelta(TransactionType type, BigDecimal oldAmount, BigDecimal newAmount) {
+        return switch (type) {
+            case INCOME -> newAmount.subtract(oldAmount);
+            case EXPENSE -> oldAmount.subtract(newAmount);
+            case TRANSFER -> null;
+        };
+    }
+
+    private void applyTransferDelta(Long userId,
+                                    WalletEntity from,
+                                    WalletEntity to,
+                                    BigDecimal oldAmount,
+                                    BigDecimal newAmount) {
+
+        BigDecimal fromDelta = oldAmount.subtract(newAmount);
+        BigDecimal toDelta = newAmount.subtract(oldAmount);
+
+        if (fromDelta.compareTo(BigDecimal.ZERO) > 0)
+            increaseBalance(userId, from, fromDelta);
+        else if (fromDelta.compareTo(BigDecimal.ZERO) < 0)
+            decreaseBalance(userId, from, fromDelta.abs());
+
+        if (toDelta.compareTo(BigDecimal.ZERO) > 0)
+            increaseBalance(userId, to, toDelta);
+        else if (toDelta.compareTo(BigDecimal.ZERO) < 0)
+            decreaseBalance(userId, to, toDelta.abs());
+    }
+
+    private void applyDelta(TransactionType type,
+                            WalletEntity oldFrom,
+                            WalletEntity oldTo,
+                            WalletEntity newFrom,
+                            WalletEntity newTo,
+                            BigDecimal oldAmount,
+                            BigDecimal newAmount,
+                            Long userId) {
+
+
+        if (type == TransactionType.TRANSFER) {
+            applyTransferDelta(userId, oldFrom, oldTo, oldAmount, newAmount);
+            return;
+        }
+
+        BigDecimal delta = computeDelta(type, oldAmount, newAmount);
+        if (delta == null || delta.compareTo(BigDecimal.ZERO) == 0) return;
+
+        switch (type) {
+            case INCOME -> {
+                WalletEntity wallet = (newTo != null) ? newTo : oldTo;
+
+                if (delta.compareTo(BigDecimal.ZERO) > 0)
+                    increaseBalance(userId, wallet, delta);
+                else
+                    decreaseBalance(userId, wallet, delta.abs());
+            }
+
+            case EXPENSE -> {
+                WalletEntity wallet = (newFrom != null) ? newFrom : oldFrom;
+
+                if (delta.compareTo(BigDecimal.ZERO) > 0)
+                    increaseBalance(userId, wallet, delta);
+                else
+                    decreaseBalance(userId, wallet, delta.abs());
             }
         }
     }
